@@ -98,6 +98,25 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 URL     : ${publicUrl}`);
   console.log(`💻 Local   : http://localhost:${PORT}`);
   console.log(`📱 Mobile  : http://${getLocalIP()}:${PORT}\n`);
+
+  // Auto-create admin on startup — always ensure admin exists
+  setTimeout(async () => {
+    try {
+      const authService = require('./services/authService');
+      const users = authService.loadUsers();
+      if (!users.find(u => u.role === 'admin')) {
+        const email = process.env.ADMIN_EMAIL || 'nuallakoko@gmail.com';
+        const password = process.env.ADMIN_PASSWORD || 'arkx2024';
+        const name = process.env.ADMIN_NAME || 'Admin ARKX';
+        const result = await authService.createAdmin(name, email, password, 'ARKX_ADMIN_2024');
+        console.log('✅ Admin auto-created:', result.message, '| Email:', email);
+      } else {
+        console.log('✅ Admin already exists');
+      }
+    } catch(e) {
+      console.error('Admin auto-create error:', e.message);
+    }
+  }, 2000);
 });
 
 module.exports = { app, io };
