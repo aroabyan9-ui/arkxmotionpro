@@ -796,16 +796,19 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 
 <!-- ══════════ PAGE: API KEYS ══════════ -->
 <div class="pg" id="pg-keys">
-<div style="display:flex;flex-direction:column;gap:14px;max-width:700px">
+<div style="display:flex;flex-direction:column;gap:14px;max-width:700px;position:relative;z-index:1">
 <div class="card">
   <div class="ch"><i class="fas fa-image"></i>ImgBB API Key
     <div class="ch-r"><span id="imgbbStatus" style="font-size:11px;color:var(--t3)">Not set</span></div>
   </div>
   <div class="cb">
-    <div class="info-b"><i class="fas fa-circle-info"></i>ImgBB is used to upload images to a public URL before sending to Magnific API. Free at <a href="https://api.imgbb.com" target="_blank" style="color:var(--c2)">api.imgbb.com</a></div>
-    <div class="add-kr">
-      <input type="text" class="inp" id="imgbbKeyInp" placeholder="Paste ImgBB API key...">
-      <button class="bp" onclick="saveImgBBKey()"><i class="fas fa-save"></i>Save</button>
+    <div class="info-b"><i class="fas fa-circle-info"></i>ImgBB dipakai upload gambar ke URL publik sebelum ke Magnific. Gratis di <a href="https://api.imgbb.com" target="_blank" style="color:var(--c2)">api.imgbb.com</a></div>
+    <div class="fg">
+      <label>ImgBB API Key</label>
+      <input type="text" class="inp" id="imgbbKeyInp" placeholder="Paste ImgBB API key..." style="margin-bottom:8px">
+      <button class="btn-gen" style="margin-top:0" ontouchstart="saveImgBBKey()" onclick="saveImgBBKey()">
+        <i class="fas fa-save"></i> Save ImgBB Key
+      </button>
     </div>
   </div>
 </div>
@@ -814,21 +817,27 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="ch-r" id="magStats"></div>
   </div>
   <div class="cb">
-    <div class="info-b"><i class="fas fa-circle-info"></i>One Magnific key for all: Video (Kling, WAN, Seedance, RunWay), Image (Mystic, Flux), Upscale, Relight, Style Transfer. Get keys at <a href="https://www.magnific.com/developers/dashboard" target="_blank" style="color:var(--c2)">magnific.com/developers</a></div>
-    <div class="add-kr">
-      <input type="text" class="inp" id="magKeyInp" placeholder="Paste Magnific API key...">
-      <input type="text" class="inp" id="magLblInp" placeholder="Label (optional)" style="max-width:140px">
-      <button class="bp" onclick="addKey()"><i class="fas fa-plus"></i>Add</button>
+    <div class="info-b"><i class="fas fa-circle-info"></i>Satu Magnific key untuk semua fitur. Daftar di <a href="https://www.magnific.com/developers/dashboard" target="_blank" style="color:var(--c2)">magnific.com/developers</a></div>
+    <div class="fg">
+      <label>Magnific API Key</label>
+      <input type="text" class="inp" id="magKeyInp" placeholder="Paste Magnific API key..." style="margin-bottom:8px">
+      <input type="text" class="inp" id="magLblInp" placeholder="Label (optional)" style="margin-bottom:8px">
+      <button class="btn-gen btn-c" style="margin-top:0" ontouchstart="addKey()" onclick="addKey()">
+        <i class="fas fa-plus"></i> Add Magnific Key
+      </button>
     </div>
-    <div class="bulk-r">
-      <button class="bs" onclick="toggleBulk()"><i class="fas fa-list"></i>Bulk Add</button>
-      <label class="bs"><i class="fas fa-upload"></i>Upload .txt<input type="file" accept=".txt,.csv" style="display:none" onchange="uploadKeys(event)"></label>
+    <div style="margin-top:12px">
+      <button class="bs" style="width:100%;padding:10px;margin-bottom:8px" ontouchstart="toggleBulk()" onclick="toggleBulk()">
+        <i class="fas fa-list"></i> Bulk Add (paste banyak key)
+      </button>
     </div>
     <div id="bulkArea" class="bulk-a" style="display:none">
       <textarea class="ta" id="bulkTa" rows="8" placeholder="One API key per line:&#10;key1&#10;key2&#10;key3"></textarea>
-      <button class="bp" style="width:100%;margin-top:6px" onclick="addBulk()"><i class="fas fa-plus-circle"></i>Add All Keys</button>
+      <button class="btn-gen" style="margin-top:6px" ontouchstart="addBulk()" onclick="addBulk()">
+        <i class="fas fa-plus-circle"></i> Add All Keys
+      </button>
     </div>
-    <div id="keyList" class="key-list"></div>
+    <div id="keyList" class="key-list" style="margin-top:12px"></div>
   </div>
 </div>
 </div>
