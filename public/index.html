@@ -443,6 +443,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         <div class="srow" id="vDurRow">
           <button class="sb2 sel" data-d="5">5s</button>
           <button class="sb2" data-d="10">10s</button>
+          <button class="sb2" data-d="15">15s</button>
         </div>
       </div>
       <div class="fg"><label>Aspect Ratio</label>
@@ -575,9 +576,22 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <div class="cb">
     <div class="fg"><label>Model</label>
       <div class="mgrid" id="iMG">
-        <div class="mc sel" data-m="mystic"><div class="mc-i">✨</div><div class="mc-n">Mystic</div><div class="mc-b">Magnific</div></div>
+        <div class="mc sel" data-m="mystic"><div class="mc-i">✨</div><div class="mc-n">Mystic</div><div class="mc-b">Ultra-realistic</div></div>
         <div class="mc" data-m="flux-kontext-pro"><div class="mc-i">🔥</div><div class="mc-n">Flux Kontext Pro</div><div class="mc-b">Context-aware</div></div>
+        <div class="mc" data-m="flux-2-pro"><div class="mc-i">⚡</div><div class="mc-n">Flux 2 Pro</div><div class="mc-b">Professional</div></div>
+        <div class="mc" data-m="flux-2-turbo"><div class="mc-i">🚀</div><div class="mc-n">Flux 2 Turbo</div><div class="mc-b">Fast & cheap</div></div>
+        <div class="mc" data-m="seedream-4-5"><div class="mc-i">🌱</div><div class="mc-n">Seedream 4.5</div><div class="mc-b">Best typography</div></div>
+        <div class="mc" data-m="gpt-image-2"><div class="mc-i">🤖</div><div class="mc-n">GPT Image 2</div><div class="mc-b">OpenAI key</div></div>
       </div>
+    </div>
+    <!-- OpenAI key notice (shown only for GPT Image 2) -->
+    <div id="openaiKeyNotice" class="info-b" style="display:none">
+      <i class="fas fa-circle-info"></i>
+      GPT Image 2 membutuhkan <b>OpenAI API key</b> terpisah. Masukkan di field di bawah.
+    </div>
+    <div class="fg" id="openaiKeyGrp" style="display:none">
+      <label>OpenAI API Key</label>
+      <input type="password" class="inp" id="openaiKeyInp" placeholder="sk-...">
     </div>
     <div class="fg"><label>Reference Image <span style="color:var(--t3);font-size:10px">(optional)</span></label>
       <div class="dz" id="iImgDZ"><i class="fas fa-image"></i><p>Upload reference image (optional)</p></div>
@@ -596,7 +610,14 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         <select class="sel" id="iRes"><option value="1k">1K (1024px)</option><option value="2k" selected>2K (2048px)</option><option value="4k">4K (4096px)</option></select>
       </div>
       <div class="fg"><label>Aspect Ratio</label>
-        <select class="sel" id="iRatio"><option value="1:1">1:1 Square</option><option value="16:9" selected>16:9 Widescreen</option><option value="9:16">9:16 Portrait</option><option value="4:3">4:3 Standard</option><option value="3:4">3:4 Portrait</option><option value="21:9">21:9 Ultrawide</option></select>
+        <select class="sel" id="iRatio">
+          <option value="square_1_1" selected>1:1 Square</option>
+          <option value="widescreen_16_9">16:9 Widescreen</option>
+          <option value="social_story_9_16">9:16 Portrait</option>
+          <option value="classic_4_3">4:3 Standard</option>
+          <option value="traditional_3_4">3:4 Portrait</option>
+          <option value="standard_3_2">3:2 Standard</option>
+        </select>
       </div>
     </div>
     <button class="btn-gen btn-c" id="iBtn"><i class="fas fa-sparkles"></i>Generate Image</button>
@@ -1559,10 +1580,10 @@ async function mFetchWithRotation(method, path, body) {
 // ══════════════════════════════════════════════
 // TASK POLLING
 // ══════════════════════════════════════════════
-async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFail) {
-  var maxAttempts = 120;
+async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFail, maxAttempts, intervalMs) {
+  maxAttempts = maxAttempts || 150; // 150 × 5s = 12.5 menit max
+  intervalMs  = intervalMs  || 5000;
   var attempt = 0;
-  var interval = 3000;
   var key = S.keys.find(function(k) { return k.id === keyId; });
   if (!key) key = getBestKey();
   if (!key) { onFail('No API key available'); return; }
@@ -1578,30 +1599,34 @@ async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFai
 
   async function poll() {
     attempt++;
-    if (attempt > maxAttempts) { onFail('Timeout: task took too long'); return; }
+    if (attempt > maxAttempts) {
+      onFail('Timeout: task took too long (' + Math.round(maxAttempts * intervalMs / 60000) + ' min). Try again.');
+      return;
+    }
     try {
       var data = await mFetch('GET', taskPath + '/' + taskId, null, key.key);
       var task = data && data.data ? data.data : data;
       var status = task.status || '';
+      var elapsed = Math.round(attempt * intervalMs / 1000);
       var pct = Math.min(10 + (attempt / maxAttempts) * 80, 90);
-      setProgress(pct, 'Status: ' + status + ' (attempt ' + attempt + '/' + maxAttempts + ')', 'Task ID: ' + taskId);
+      setProgress(pct, status + ' — ' + elapsed + 's', 'Task: ' + taskId);
       if (status === 'COMPLETED') {
         setProgress(100, 'Completed!', '');
         var urls = task.generated || [];
         onDone(urls[0] || null, urls);
       } else if (status === 'FAILED') {
-        onFail('Task failed: ' + (task.error || 'Unknown error'));
+        onFail('Task failed: ' + (task.error || task.message || 'Unknown error'));
       } else {
-        setTimeout(poll, interval);
+        setTimeout(poll, intervalMs);
       }
     } catch(e) {
       dbg('ERROR', 'Poll error: ' + e.message);
-      if (attempt < 5) { setTimeout(poll, interval * 2); }
+      if (attempt < maxAttempts) { setTimeout(poll, intervalMs * 2); }
       else { onFail('Poll error: ' + e.message); }
     }
   }
-  setProgress(5, 'Task created, waiting...', 'Task ID: ' + taskId);
-  setTimeout(poll, interval);
+  setProgress(5, 'Task created, waiting...', 'Task: ' + taskId);
+  setTimeout(poll, intervalMs);
 }
 
 // ══════════════════════════════════════════════
@@ -1753,7 +1778,9 @@ async function genMotion() {
         document.getElementById('mRes').innerHTML = '<div class="res-ph"><i class="fas fa-circle-xmark" style="color:var(--r)"></i><p>' + escHtml(err) + '</p></div>';
         toast('Motion failed: ' + err, 'err');
         resetMotionBtn();
-      }
+      },
+      200, // maxAttempts: 200 × 5s = ~16 menit untuk motion 30s
+      5000  // intervalMs: poll setiap 5 detik
     );
   } catch(e) {
     document.getElementById('mProg').style.display = 'none';
@@ -1773,8 +1800,12 @@ function resetMotionBtn() {
 // IMAGE GENERATION
 // ══════════════════════════════════════════════
 var IMAGE_ENDPOINTS = {
-  'mystic':          { post: '/v1/ai/mystic',           poll: '/v1/ai/mystic' },
-  'flux-kontext-pro':{ post: '/v1/ai/flux-kontext-pro', poll: '/v1/ai/flux-kontext-pro' }
+  'mystic':           { post: '/v1/ai/mystic',                              poll: '/v1/ai/mystic',                              label: 'Mystic',           desc: 'Ultra-realistic',  icon: '✨' },
+  'flux-kontext-pro': { post: '/v1/ai/text-to-image/flux-kontext-pro',      poll: '/v1/ai/text-to-image/flux-kontext-pro',      label: 'Flux Kontext Pro', desc: 'Context-aware',    icon: '🔥' },
+  'flux-2-pro':       { post: '/v1/ai/text-to-image/flux-2-pro',            poll: '/v1/ai/text-to-image/flux-2-pro',            label: 'Flux 2 Pro',       desc: 'Professional',     icon: '⚡' },
+  'flux-2-turbo':     { post: '/v1/ai/text-to-image/flux-2-turbo',          poll: '/v1/ai/text-to-image/flux-2-turbo',          label: 'Flux 2 Turbo',     desc: 'Fast & cheap',     icon: '🚀' },
+  'seedream-4-5':     { post: '/v1/ai/text-to-image/seedream-v4-5',         poll: '/v1/ai/text-to-image/seedream-v4-5',         label: 'Seedream 4.5',     desc: 'Best typography',  icon: '🌱' },
+  'gpt-image-2':      { post: '/v1/ai/gpt-image-2',                         poll: '/v1/ai/gpt-image-2',                         label: 'GPT Image 2',      desc: 'OpenAI',           icon: '🤖', openai: true }
 };
 
 async function genImage() {
@@ -1793,26 +1824,63 @@ async function genImage() {
   document.getElementById('iRes2').innerHTML = '<div class="res-ph"><i class="fas fa-spinner fa-spin" style="opacity:.5"></i><p>Generating image...</p></div>';
 
   try {
-    var resMap = { '1k': 1024, '2k': 2048, '4k': 4096 };
-    var body = {
-      prompt: prompt,
-      negative_prompt: document.getElementById('iNeg').value.trim() || undefined,
-      resolution: resMap[document.getElementById('iRes').value] || 2048,
-      aspect_ratio: document.getElementById('iRatio').value
-    };
-    if (S.imgs.iImgUrl || S.imgs.iImg) {
-      var imgUrl = S.imgs.iImgUrl;
-      if (!imgUrl && S.imgs.iImg) {
-        document.getElementById('iPT').textContent = 'Uploading reference image...';
-        imgUrl = await uploadImgBB(S.imgs.iImg, 'image');
-        S.imgs.iImgUrl = imgUrl;
+    // Build body sesuai model — setiap model punya field berbeda
+    var body = { prompt: prompt };
+    var m = S.iModel;
+
+    if (m === 'mystic') {
+      // Mystic: resolution (1k/2k/4k), aspect_ratio (square_1_1 dll), model
+      body.resolution = document.getElementById('iRes').value || '2k';
+      body.aspect_ratio = document.getElementById('iRatio').value || 'square_1_1';
+      body.model = 'realism';
+      if (S.imgs.iImgUrl || S.imgs.iImg) {
+        var imgUrl = S.imgs.iImgUrl;
+        if (!imgUrl && S.imgs.iImg) { imgUrl = await uploadImgBB(S.imgs.iImg, 'image'); S.imgs.iImgUrl = imgUrl; }
+        body.structure_reference = imgUrl; // Mystic pakai structure_reference
       }
-      body.image_url = imgUrl;
+    } else if (m === 'flux-kontext-pro') {
+      // Flux Kontext Pro: aspect_ratio, guidance, steps
+      body.aspect_ratio = document.getElementById('iRatio').value || 'square_1_1';
+      body.guidance = 3;
+      body.steps = 50;
+      if (S.imgs.iImgUrl || S.imgs.iImg) {
+        var imgUrl2 = S.imgs.iImgUrl;
+        if (!imgUrl2 && S.imgs.iImg) { imgUrl2 = await uploadImgBB(S.imgs.iImg, 'image'); S.imgs.iImgUrl = imgUrl2; }
+        body.input_image = imgUrl2;
+      }
+    } else if (m === 'flux-2-pro') {
+      // Flux 2 Pro: width/height (pixels), input_image (base64)
+      var dimMap = {
+        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810], 'social_story_9_16': [810,1440],
+        '4:3': [1024,768], '3:4': [768,1024], '16:9': [1440,810], '9:16': [810,1440], '1:1': [1024,1024]
+      };
+      var ratio = document.getElementById('iRatio').value || 'square_1_1';
+      var dims = dimMap[ratio] || [1024,1024];
+      body.width = dims[0];
+      body.height = dims[1];
+      if (S.imgs.iImg) {
+        // Flux 2 Pro terima base64 langsung
+        body.input_image = S.imgs.iImg;
+      }
+    } else if (m === 'flux-2-turbo') {
+      // Flux 2 Turbo: image_size object, guidance_scale
+      var ratio2 = document.getElementById('iRatio').value || 'square_1_1';
+      var dimMap2 = {
+        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810], 'social_story_9_16': [810,1440],
+        '4:3': [1024,768], '3:4': [768,1024], '16:9': [1440,810], '9:16': [810,1440], '1:1': [1024,1024]
+      };
+      var dims2 = dimMap2[ratio2] || [1024,1024];
+      body.image_size = { width: dims2[0], height: dims2[1] };
+      body.guidance_scale = 2.5;
+    } else if (m === 'seedream-4-5') {
+      // Seedream 4.5: aspect_ratio (square_1_1 dll)
+      body.aspect_ratio = document.getElementById('iRatio').value || 'square_1_1';
     }
-    dbg('REQUEST', 'genImage: ' + S.iModel + ' prompt=' + prompt.substring(0, 60));
+
+    dbg('REQUEST', 'genImage: ' + m + ' | ' + JSON.stringify(body).substring(0, 100));
     var resp = await mFetchWithRotation('POST', ep.post, body);
     var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
-    if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
+    if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp).substring(0, 200));
     pollTask(taskId, ep.poll, key.id, 'iPB', 'iPT', null,
       function(url) {
         document.getElementById('iProg').style.display = 'none';
@@ -2320,7 +2388,18 @@ function pickModel(el, group) {
   if (container) container.querySelectorAll('.mc').forEach(function(m) { m.classList.remove('sel'); });
   el.classList.add('sel');
   if (group === 'v') S.vModel = el.dataset.m;
-  if (group === 'i') S.iModel = el.dataset.m;
+  if (group === 'i') {
+    S.iModel = el.dataset.m;
+    // Show/hide OpenAI notice
+    var notice = document.getElementById('openaiKeyNotice');
+    var grp = document.getElementById('openaiKeyGrp');
+    var isOpenAI = el.dataset.m === 'gpt-image-2';
+    if (notice) notice.style.display = isOpenAI ? 'flex' : 'none';
+    if (grp) grp.style.display = isOpenAI ? 'block' : 'none';
+    // Show/hide resolution (only for Mystic)
+    var resGrp = document.getElementById('iRes') ? document.getElementById('iRes').closest('.fg') : null;
+    if (resGrp) resGrp.style.display = el.dataset.m === 'mystic' ? 'block' : 'none';
+  }
 }
 
 function pickMode(el) {
