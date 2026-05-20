@@ -1605,16 +1605,19 @@ async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFai
     }
     try {
       var data = await mFetch('GET', taskPath + '/' + taskId, null, key.key);
+      // Support both response shapes:
+      // Shape A (video): { data: { task_id, status, generated } }
+      // Shape B (image): { task_id, task_status, generated }
       var task = data && data.data ? data.data : data;
-      var status = task.status || '';
+      var status = task.task_status || task.status || '';
       var elapsed = Math.round(attempt * intervalMs / 1000);
       var pct = Math.min(10 + (attempt / maxAttempts) * 80, 90);
       setProgress(pct, status + ' — ' + elapsed + 's', 'Task: ' + taskId);
-      if (status === 'COMPLETED') {
+      if (status === 'COMPLETED' || status === 'completed') {
         setProgress(100, 'Completed!', '');
         var urls = task.generated || [];
         onDone(urls[0] || null, urls);
-      } else if (status === 'FAILED') {
+      } else if (status === 'FAILED' || status === 'failed') {
         onFail('Task failed: ' + (task.error || task.message || 'Unknown error'));
       } else {
         setTimeout(poll, intervalMs);
@@ -1678,7 +1681,7 @@ async function genVideo() {
     }
     dbg('REQUEST', 'genVideo: ' + S.vModel + ' prompt=' + prompt.substring(0, 60));
     var resp = await mFetchWithRotation('POST', ep.post, body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id in response: ' + JSON.stringify(resp));
     dbg('INFO', 'Video task created: ' + taskId);
     pollTask(taskId, ep.poll, key.id, 'vPB', 'vPT', 'vPS',
@@ -1758,7 +1761,7 @@ async function genMotion() {
     };
     dbg('REQUEST', 'genMotion: dur=' + S.mDur + ' orientation=' + S.mCharOrientation);
     var resp = await mFetchWithRotation('POST', '/v1/ai/video/kling-v2-6-motion-control-pro', body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
     dbg('INFO', 'Motion task: ' + taskId);
     pollTask(taskId, '/v1/ai/image-to-video/kling-v2-6', key.id, 'mPB', 'mPT', null,
@@ -1886,7 +1889,7 @@ async function genImage() {
 
     dbg('REQUEST', 'genImage: ' + m + ' | ' + JSON.stringify(body).substring(0, 100));
     var resp = await mFetchWithRotation('POST', ep.post, body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp).substring(0, 200));
     pollTask(taskId, ep.poll, key.id, 'iPB', 'iPT', null,
       function(url) {
@@ -1958,7 +1961,7 @@ async function doUpscale() {
     if (upPrompt) body.prompt = upPrompt;
     dbg('REQUEST', 'doUpscale: scale=' + S.upScale);
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-upscaler', body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
     pollTask(taskId, '/v1/ai/image-upscaler', key.id, 'upPB', 'upPT', null,
       function(url) {
@@ -2042,7 +2045,7 @@ async function doRelight() {
     }
     dbg('REQUEST', 'doRelight: ' + prompt.substring(0, 60));
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-relight', body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
     pollTask(taskId, '/v1/ai/image-relight', key.id, 'rlPB', 'rlPT', null,
       function(url) {
@@ -2124,7 +2127,7 @@ async function doStyle() {
     if (stPrompt) body.prompt = stPrompt;
     dbg('REQUEST', 'doStyle: strength=' + body.style_strength);
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-style-transfer', body);
-    var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
+    var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
     pollTask(taskId, '/v1/ai/image-style-transfer', key.id, 'stPB', 'stPT', null,
       function(url) {
