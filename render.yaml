@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: arkxmotionpro
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_SECRET
+        value: ARKX_ADMIN_2024
+      - key: JWT_SECRET
+        generateValue: true
