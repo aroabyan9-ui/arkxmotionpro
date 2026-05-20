@@ -2244,19 +2244,20 @@ async function loadAdminUsers() {
   if (!el) return;
   el.innerHTML = '<div class="empty-s">Loading...</div>';
   try {
-    var r = await fetch(PROXY + '/auth/users', {
+    var r = await fetch(PROXY + '/auth/admin/users', {
       headers: { 'Authorization': 'Bearer ' + AUTH.token }
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var data = await r.json();
-    var users = data.users || data || [];
+    if (!data.success) throw new Error(data.message || 'Failed');
+    var users = data.users || [];
     if (!users.length) { el.innerHTML = '<div class="empty-s">No users found.</div>'; return; }
     el.innerHTML = users.map(function(u) {
       return '<div class="admin-user-row">' +
         '<div class="au-info">' +
           '<div class="au-name">' + escHtml(u.name || '') + '</div>' +
           '<div class="au-email">' + escHtml(u.email || '') + '</div>' +
-          '<div class="au-meta">Role: ' + escHtml(u.role || '') + ' · Joined: ' + fmtDate(u.createdAt || u.created_at || Date.now()) + '</div>' +
+          '<div class="au-meta">Role: ' + escHtml(u.role || '') + ' · Joined: ' + fmtDate(u.createdAt || Date.now()) + '</div>' +
         '</div>' +
         '<span class="au-status ' + (u.status || 'pending') + '">' + (u.status || 'pending') + '</span>' +
         '<div class="au-acts">' +
@@ -2266,13 +2267,13 @@ async function loadAdminUsers() {
       '</div>';
     }).join('');
   } catch(e) {
-    el.innerHTML = '<div class="empty-s">Error loading users: ' + escHtml(e.message) + '</div>';
+    el.innerHTML = '<div class="empty-s">Error: ' + escHtml(e.message) + '</div>';
   }
 }
 
 async function approveUser(id) {
   try {
-    var r = await fetch(PROXY + '/auth/users/' + id + '/approve', {
+    var r = await fetch(PROXY + '/auth/admin/approve/' + id, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + AUTH.token, 'Content-Type': 'application/json' }
     });
@@ -2284,7 +2285,7 @@ async function approveUser(id) {
 
 async function rejectUser(id) {
   try {
-    var r = await fetch(PROXY + '/auth/users/' + id + '/reject', {
+    var r = await fetch(PROXY + '/auth/admin/reject/' + id, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + AUTH.token, 'Content-Type': 'application/json' }
     });
@@ -2297,13 +2298,12 @@ async function rejectUser(id) {
 async function refreshPendingCount() {
   if (!AUTH.isAdmin || !AUTH.token) return;
   try {
-    var r = await fetch(PROXY + '/auth/users', {
+    var r = await fetch(PROXY + '/auth/admin/pending', {
       headers: { 'Authorization': 'Bearer ' + AUTH.token }
     });
     if (!r.ok) return;
     var data = await r.json();
-    var users = data.users || data || [];
-    var pending = users.filter(function(u) { return u.status === 'pending'; }).length;
+    var pending = data.count || 0;
     var badge = document.getElementById('pendingBadge');
     if (badge) {
       badge.textContent = pending;
