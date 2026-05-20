@@ -1835,41 +1835,48 @@ async function genImage() {
       body.model = 'realism';
       if (S.imgs.iImgUrl || S.imgs.iImg) {
         var imgUrl = S.imgs.iImgUrl;
-        if (!imgUrl && S.imgs.iImg) { imgUrl = await uploadImgBB(S.imgs.iImg, 'image'); S.imgs.iImgUrl = imgUrl; }
-        body.structure_reference = imgUrl; // Mystic pakai structure_reference
+        if (!imgUrl && S.imgs.iImg) {
+          document.getElementById('iPT').textContent = 'Uploading reference image...';
+          imgUrl = await uploadImgBB(S.imgs.iImg, 'image');
+          S.imgs.iImgUrl = imgUrl;
+        }
+        body.structure_reference = imgUrl;
       }
     } else if (m === 'flux-kontext-pro') {
-      // Flux Kontext Pro: aspect_ratio, guidance, steps
+      // Flux Kontext Pro: aspect_ratio, guidance, steps, input_image (URL)
       body.aspect_ratio = document.getElementById('iRatio').value || 'square_1_1';
       body.guidance = 3;
       body.steps = 50;
       if (S.imgs.iImgUrl || S.imgs.iImg) {
         var imgUrl2 = S.imgs.iImgUrl;
-        if (!imgUrl2 && S.imgs.iImg) { imgUrl2 = await uploadImgBB(S.imgs.iImg, 'image'); S.imgs.iImgUrl = imgUrl2; }
+        if (!imgUrl2 && S.imgs.iImg) {
+          document.getElementById('iPT').textContent = 'Uploading reference image...';
+          imgUrl2 = await uploadImgBB(S.imgs.iImg, 'image');
+          S.imgs.iImgUrl = imgUrl2;
+        }
         body.input_image = imgUrl2;
       }
     } else if (m === 'flux-2-pro') {
-      // Flux 2 Pro: width/height (pixels), input_image (base64)
-      var dimMap = {
-        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810], 'social_story_9_16': [810,1440],
-        '4:3': [1024,768], '3:4': [768,1024], '16:9': [1440,810], '9:16': [810,1440], '1:1': [1024,1024]
+      // Flux 2 Pro: width/height pixels, input_image (base64 atau URL)
+      var ratioToSize = {
+        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810],
+        'social_story_9_16': [810,1440], 'classic_4_3': [1024,768],
+        'traditional_3_4': [768,1024], 'standard_3_2': [1024,683]
       };
       var ratio = document.getElementById('iRatio').value || 'square_1_1';
-      var dims = dimMap[ratio] || [1024,1024];
+      var dims = ratioToSize[ratio] || [1024,1024];
       body.width = dims[0];
       body.height = dims[1];
-      if (S.imgs.iImg) {
-        // Flux 2 Pro terima base64 langsung
-        body.input_image = S.imgs.iImg;
-      }
+      if (S.imgs.iImg) body.input_image = S.imgs.iImg; // base64 OK
     } else if (m === 'flux-2-turbo') {
       // Flux 2 Turbo: image_size object, guidance_scale
-      var ratio2 = document.getElementById('iRatio').value || 'square_1_1';
-      var dimMap2 = {
-        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810], 'social_story_9_16': [810,1440],
-        '4:3': [1024,768], '3:4': [768,1024], '16:9': [1440,810], '9:16': [810,1440], '1:1': [1024,1024]
+      var ratioToSize2 = {
+        'square_1_1': [1024,1024], 'widescreen_16_9': [1440,810],
+        'social_story_9_16': [810,1440], 'classic_4_3': [1024,768],
+        'traditional_3_4': [768,1024], 'standard_3_2': [1024,683]
       };
-      var dims2 = dimMap2[ratio2] || [1024,1024];
+      var ratio2 = document.getElementById('iRatio').value || 'square_1_1';
+      var dims2 = ratioToSize2[ratio2] || [1024,1024];
       body.image_size = { width: dims2[0], height: dims2[1] };
       body.guidance_scale = 2.5;
     } else if (m === 'seedream-4-5') {
@@ -1937,17 +1944,18 @@ async function doUpscale() {
       imgUrl = await uploadImgBB(S.imgs.upImg, 'image');
       S.imgs.upImgUrl = imgUrl;
     }
-    var scaleMap = { '2x': 2, '4x': 4, '8x': 8, '16x': 16 };
+    var scaleMap = { '2x': '2x', '4x': '4x', '8x': '8x', '16x': '16x' };
     var body = {
-      image_url: imgUrl,
-      scale_factor: scaleMap[S.upScale] || 2,
+      image: imgUrl,           // field yang benar: 'image' bukan 'image_url'
+      scale_factor: scaleMap[S.upScale] || '2x',
       engine: document.getElementById('upEngine').value,
       optimized_for: document.getElementById('upOpt').value,
       creativity: parseInt(document.getElementById('crS').value),
       hdr: parseInt(document.getElementById('hdrS').value),
-      resemblance: parseInt(document.getElementById('resS').value),
-      prompt: document.getElementById('upPrompt').value.trim() || undefined
+      resemblance: parseInt(document.getElementById('resS').value)
     };
+    var upPrompt = document.getElementById('upPrompt').value.trim();
+    if (upPrompt) body.prompt = upPrompt;
     dbg('REQUEST', 'doUpscale: scale=' + S.upScale);
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-upscaler', body);
     var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
@@ -2017,10 +2025,10 @@ async function doRelight() {
       S.imgs.rlImgUrl = imgUrl;
     }
     var body = {
-      image_url: imgUrl,
+      image: imgUrl,           // field yang benar: 'image' bukan 'image_url'
       prompt: prompt,
       style: document.getElementById('rlStyle').value,
-      light_strength: parseInt(document.getElementById('rlStr').value),
+      light_transfer_strength: parseInt(document.getElementById('rlStr').value),
       change_background: document.getElementById('rlBg').checked,
       preserve_details: document.getElementById('rlPD').checked
     };
@@ -2030,7 +2038,7 @@ async function doRelight() {
         refUrl = await uploadImgBB(S.imgs.rlRefImg, 'image');
         S.imgs.rlRefImgUrl = refUrl;
       }
-      body.reference_image_url = refUrl;
+      body.transfer_light_from_reference_image = refUrl; // field yang benar
     }
     dbg('REQUEST', 'doRelight: ' + prompt.substring(0, 60));
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-relight', body);
@@ -2105,11 +2113,15 @@ async function doStyle() {
       S.imgs.stRefImgUrl = refUrl;
     }
     var body = {
-      image_url: imgUrl,
-      style_image_url: refUrl,
-      prompt: document.getElementById('stPrompt').value.trim() || undefined,
-      style_strength: parseInt(document.getElementById('stStr').value)
+      image: imgUrl,           // field yang benar: 'image' bukan 'image_url'
+      reference_image: refUrl, // field yang benar: 'reference_image' bukan 'style_image_url'
+      style_strength: parseInt(document.getElementById('stStr').value), // 0-100
+      structure_strength: 50,
+      flavor: 'faithful',
+      engine: 'balanced'
     };
+    var stPrompt = document.getElementById('stPrompt').value.trim();
+    if (stPrompt) body.prompt = stPrompt;
     dbg('REQUEST', 'doStyle: strength=' + body.style_strength);
     var resp = await mFetchWithRotation('POST', '/v1/ai/image-style-transfer', body);
     var taskId = resp && resp.data && resp.data.task_id ? resp.data.task_id : null;
