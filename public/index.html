@@ -24,7 +24,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 #app{display:flex;height:100vh;overflow:hidden}
 
 /* ── LOGIN SCREEN ── */
-#loginScreen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+#loginScreen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;pointer-events:auto}
+#loginScreen.hidden{display:none!important;pointer-events:none!important;visibility:hidden!important}
 .login-wrap{width:100%;max-width:420px}
 .login-logo{text-align:center;margin-bottom:32px}
 .login-logo-icon{width:64px;height:64px;background:linear-gradient(135deg,var(--p),var(--c));border-radius:18px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px;box-shadow:0 8px 32px var(--pglow)}
@@ -1150,13 +1151,28 @@ async function verifyAndLoad() {
 }
 
 function showLoginScreen() {
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
+  const ls = document.getElementById('loginScreen');
+  const ap = document.getElementById('app');
+  if (ls) { ls.style.display = 'flex'; ls.classList.remove('hidden'); }
+  if (ap) ap.style.display = 'none';
 }
 
 function loadMainApp() {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
+  const ls = document.getElementById('loginScreen');
+  const ap = document.getElementById('app');
+  // Sembunyikan login screen dengan benar - 3 cara sekaligus
+  if (ls) {
+    ls.style.display = 'none';
+    ls.style.visibility = 'hidden';
+    ls.style.pointerEvents = 'none';
+    ls.classList.add('hidden');
+  }
+  // Tampilkan app
+  if (ap) {
+    ap.style.display = 'flex';
+    ap.style.visibility = 'visible';
+    ap.style.pointerEvents = 'auto';
+  }
   // Update sidebar user info
   if (AUTH.user) {
     const av = document.getElementById('sbUserAv');
