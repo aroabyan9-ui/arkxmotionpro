@@ -417,6 +417,8 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="na" data-pg="history"><i class="fas fa-clock-rotate-left"></i>History</div>
     <div class="na" data-pg="stats"><i class="fas fa-chart-bar"></i>Statistics</div>
     <div class="na" data-pg="debug"><i class="fas fa-terminal"></i>Debug Console</div>
+    <div class="sep"></div>
+    <div class="na" data-pg="assistant"><i class="fas fa-robot" style="color:#f97316"></i>AI Assistant</div>
     <div class="sep" id="adminSep" style="display:none"></div>
     <div class="na" id="adminNav" data-pg="admin" style="display:none"><i class="fas fa-users-cog"></i>Admin Panel<span class="na-badge" id="pendingBadge" style="display:none">0</span></div>
   </div>
@@ -471,7 +473,10 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
       <div id="vPrev" class="prev" style="display:none"></div>
     </div>
     <div class="fg"><label>Prompt <span style="color:var(--r)">*</span></label>
-      <textarea class="ta" id="vPrompt" rows="4" placeholder="Describe your video..."></textarea>
+      <div class="enh-wrap">
+        <textarea class="ta" id="vPrompt" rows="4" placeholder="Describe your video..."></textarea>
+        <button class="enh-btn" id="enhBtn_vPrompt" onclick="groqEnhancePrompt(document.getElementById('vPrompt').value,'video','vPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
+      </div>
       <div class="cc"><span id="vpc">0</span>/2500</div>
     </div>
     <div class="fg"><label>Negative Prompt</label>
@@ -563,7 +568,10 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
       </div>
     </div>
     <div class="fg"><label>Prompt <span style="color:var(--t3);font-size:10px">(optional)</span></label>
-      <textarea class="ta" id="mPrompt" rows="2" placeholder="Describe context/environment..."></textarea>
+      <div class="enh-wrap">
+        <textarea class="ta" id="mPrompt" rows="2" placeholder="Describe context/environment..."></textarea>
+        <button class="enh-btn" id="enhBtn_mPrompt" onclick="groqEnhancePrompt(document.getElementById('mPrompt').value,'motion','mPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
+      </div>
     </div>
     <div class="fg"><label>Character Orientation</label>
       <div class="mrow" id="mCORow">
@@ -646,7 +654,10 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
       <div id="iPrev" class="prev" style="display:none"></div>
     </div>
     <div class="fg"><label>Prompt <span style="color:var(--r)">*</span></label>
-      <textarea class="ta" id="iPrompt" rows="4" placeholder="Describe the image..."></textarea>
+      <div class="enh-wrap">
+        <textarea class="ta" id="iPrompt" rows="4" placeholder="Describe the image..."></textarea>
+        <button class="enh-btn" id="enhBtn_iPrompt" onclick="groqEnhancePrompt(document.getElementById('iPrompt').value,'image','iPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
+      </div>
       <div class="cc"><span id="ipc">0</span>/2500</div>
     </div>
     <div class="fg"><label>Negative Prompt</label>
@@ -874,6 +885,20 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   </div>
 </div>
 <div class="card">
+  <div class="ch"><i class="fas fa-robot" style="color:#f97316"></i>Groq AI Key <span style="font-size:10px;color:var(--t3);margin-left:6px">Prompt Enhance · Chat · Suggestions</span></div>
+  <div class="cb">
+    <div class="add-kr">
+      <input type="text" class="inp" id="groqKeyInp" placeholder="gsk_... (from console.groq.com)">
+      <button class="bp" style="background:linear-gradient(135deg,#f97316,#ea580c)" id="saveGroqBtn"><i class="fas fa-save"></i>Save</button>
+    </div>
+    <span id="groqStatus" style="font-size:11px;color:var(--t3)"></span>
+    <div class="info-b" style="margin-top:10px;margin-bottom:0">
+      <i class="fas fa-circle-info"></i>
+      <div>Groq key dipakai untuk: <b style="color:var(--p2)">✨ Enhance Prompt</b>, <b style="color:var(--c)">💬 AI Assistant</b>, <b style="color:#f97316">🎬 Video Script</b>, <b style="color:var(--g)">💡 Suggestions</b>. Gratis di <a href="https://console.groq.com" target="_blank" style="color:var(--c)">console.groq.com</a></div>
+    </div>
+  </div>
+</div>
+<div class="card">
   <div class="ch"><i class="fas fa-key"></i>Magnific API Keys <span id="magStats" style="margin-left:8px;font-size:11px"></span>
     <div class="ch-r">
       <button class="bsm" id="toggleBulkBtn"><i class="fas fa-list"></i>Bulk Add</button>
@@ -1003,6 +1028,95 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 </div>
 </div>
 
+<!-- ══ PAGE: AI ASSISTANT ══ -->
+<div class="pg" id="pg-assistant">
+<div class="g2">
+<div>
+<!-- Chat -->
+<div class="card" style="height:calc(100vh - 120px);display:flex;flex-direction:column">
+  <div class="ch"><i class="fas fa-robot" style="color:#f97316"></i>ARKX AI Assistant
+    <span style="font-size:10px;color:var(--t3);margin-left:8px">Powered by Groq</span>
+    <div class="ch-r"><button class="bsm" id="clearChatBtn"><i class="fas fa-trash"></i>Clear</button></div>
+  </div>
+  <div id="chatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
+    <div class="chat-msg assistant">
+      <div class="chat-bubble">👋 Halo! Saya ARKX AI Assistant. Tanya apa saja tentang cara pakai tools ini — prompt tips, pilih model, troubleshoot error, dll!</div>
+    </div>
+  </div>
+  <div style="padding:12px;border-top:1px solid var(--border)">
+    <div style="display:flex;gap:8px">
+      <input type="text" class="inp" id="chatInput" placeholder="Tanya sesuatu... (Enter to send)" style="flex:1">
+      <button class="bp" id="chatSendBtn" style="background:linear-gradient(135deg,#f97316,#ea580c)"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+</div>
+</div>
+<div>
+<!-- Prompt Suggestions -->
+<div class="card">
+  <div class="ch"><i class="fas fa-lightbulb" style="color:var(--w)"></i>Prompt Suggestions</div>
+  <div class="cb">
+    <div class="fg"><label>Category</label>
+      <div class="rrow" id="suggestCatRow">
+        <button class="rb sel" data-cat="cinematic">🎬 Cinematic</button>
+        <button class="rb" data-cat="nature">🌿 Nature</button>
+        <button class="rb" data-cat="portrait">👤 Portrait</button>
+        <button class="rb" data-cat="action">⚡ Action</button>
+        <button class="rb" data-cat="fantasy">🔮 Fantasy</button>
+        <button class="rb" data-cat="urban">🏙️ Urban</button>
+      </div>
+    </div>
+    <div class="fg"><label>Type</label>
+      <div class="mrow">
+        <button class="mbt on" data-stype="video" id="stypeVideo"><i class="fas fa-film"></i>Video</button>
+        <button class="mbt" data-stype="image" id="stypeImage"><i class="fas fa-image"></i>Image</button>
+      </div>
+    </div>
+    <button class="btn-gen" id="getSuggestBtn" style="background:linear-gradient(135deg,var(--w),#d97706)"><i class="fas fa-lightbulb"></i>Get Suggestions</button>
+    <div id="suggestList" style="margin-top:12px;display:flex;flex-direction:column;gap:7px"></div>
+  </div>
+</div>
+<!-- Video Script Generator -->
+<div class="card">
+  <div class="ch"><i class="fas fa-clapperboard" style="color:var(--pk)"></i>Video Script Generator</div>
+  <div class="cb">
+    <div class="fg"><label>Topic / Idea</label>
+      <input type="text" class="inp" id="scriptTopic" placeholder="e.g. sunset over mountains, dancing robot...">
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Duration</label>
+        <select class="sel" id="scriptDur">
+          <option value="5">5 seconds</option>
+          <option value="10" selected>10 seconds</option>
+          <option value="15">15 seconds</option>
+        </select>
+      </div>
+      <div class="fg"><label>Style</label>
+        <select class="sel" id="scriptStyle">
+          <option value="cinematic">Cinematic</option>
+          <option value="documentary">Documentary</option>
+          <option value="music video">Music Video</option>
+          <option value="commercial">Commercial</option>
+          <option value="artistic">Artistic</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-gen btn-c" id="genScriptBtn"><i class="fas fa-clapperboard"></i>Generate Script</button>
+    <div id="scriptResult" style="margin-top:12px;display:none">
+      <div class="fg"><label>Generated Prompt</label><textarea class="ta" id="scriptPromptOut" rows="3" readonly></textarea></div>
+      <div class="fg"><label>Negative Prompt</label><textarea class="ta" id="scriptNegOut" rows="2" readonly></textarea></div>
+      <div class="r2">
+        <div class="fg"><label>Recommended Model</label><input class="inp" id="scriptModelOut" readonly></div>
+        <div class="fg"><label>Aspect Ratio</label><input class="inp" id="scriptRatioOut" readonly></div>
+      </div>
+      <button class="bp" id="useScriptBtn" style="width:100%"><i class="fas fa-arrow-right"></i>Use This Prompt in Video Generate</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
   </div><!-- /pages -->
 </main>
 </div><!-- /app -->
@@ -1017,7 +1131,7 @@ var S = {
   mModel: 'kling-v2-6-pro', mRatio: 'widescreen_16_9', mDur: '5', mCharOrientation: 'video',
   iModel: 'mystic',
   upScale: '2x',
-  keys: [], proxies: [], history: [], imgbbKey: '',
+  keys: [], proxies: [], history: [], imgbbKey: '', groqKey: '',
   results: { v: null, m: null, i: null, up: null, rl: null, st: null },
   imgs: {
     vImg: null, vImgUrl: null,
@@ -1040,6 +1154,7 @@ var DB = {
 // Load persisted data immediately
 S.keys = DB.load('keys', []);
 S.imgbbKey = DB.load('imgbbKey', '');
+S.groqKey = DB.load('groqKey', '');
 S.proxies = DB.load('proxies', []);
 S.history = DB.load('history', []);
 
@@ -1254,7 +1369,8 @@ function goPage(page) {
     video: 'Video Generate', motion: 'Motion Control', image: 'Image Generate',
     upscale: 'Upscale Ultra', relight: 'AI Relight', style: 'Style Transfer',
     keys: 'API Keys', proxy: 'Proxy Manager', history: 'History',
-    stats: 'Statistics', debug: 'Debug Console', admin: 'Admin Panel'
+    stats: 'Statistics', debug: 'Debug Console', admin: 'Admin Panel',
+    assistant: 'AI Assistant'
   };
   var tb = document.getElementById('tbTitle');
   if (tb) tb.textContent = titles[page] || page;
@@ -1397,6 +1513,208 @@ function saveImgBBKey() {
   var st = document.getElementById('imgbbStatus');
   if (st) { st.textContent = 'Saved ✓'; st.style.color = 'var(--g)'; }
   toast('ImgBB key saved!', 'ok');
+}
+
+function saveGroqKey() {
+  var v = document.getElementById('groqKeyInp').value.trim();
+  if (!v) { toast('Enter Groq API key', 'err'); return; }
+  S.groqKey = v;
+  DB.save('groqKey', v);
+  var st = document.getElementById('groqStatus');
+  if (st) { st.textContent = 'Saved ✓'; st.style.color = 'var(--g)'; }
+  toast('Groq key saved!', 'ok');
+}
+
+// ══════════════════════════════════════════════
+// GROQ AI FUNCTIONS
+// ══════════════════════════════════════════════
+async function groqEnhancePrompt(prompt, type, targetId) {
+  if (!S.groqKey) { toast('Set Groq API key in API Keys page first', 'warn'); return; }
+  if (!prompt) { toast('Enter a prompt first', 'warn'); return; }
+  var btn = document.getElementById('enhBtn_' + targetId);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  try {
+    var r = await fetch(PROXY + '/proxy/groq/enhance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-groq-api-key': S.groqKey },
+      body: JSON.stringify({ prompt: prompt, type: type })
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error || 'Enhance failed');
+    var el = document.getElementById(targetId);
+    if (el) el.value = data.enhanced;
+    toast('Prompt enhanced!', 'ok');
+  } catch(e) {
+    toast('Enhance error: ' + e.message, 'err');
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>'; }
+}
+
+async function groqGetCaption(url, type, prompt) {
+  if (!S.groqKey) { toast('Set Groq API key first', 'warn'); return; }
+  try {
+    var r = await fetch(PROXY + '/proxy/groq/caption', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-groq-api-key': S.groqKey },
+      body: JSON.stringify({ url: url, type: type, originalPrompt: prompt })
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error);
+    // Show caption modal
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:16px';
+    box.innerHTML = '<div style="background:var(--glass);border:1px solid var(--border2);border-radius:20px;padding:24px;max-width:500px;width:100%;box-shadow:var(--sh)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<h3 style="font-size:14px;font-weight:700"><i class="fas fa-comment-dots" style="color:var(--p2);margin-right:8px"></i>Caption Ideas</h3>' +
+        '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;color:var(--t2);cursor:pointer;font-size:18px">✕</button>' +
+      '</div>' +
+      '<pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;color:var(--t2);line-height:1.7">' + escHtml(data.captions) + '</pre>' +
+      '<button onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent=\'Copied!\'" style="margin-top:12px;width:100%;padding:10px;background:linear-gradient(135deg,var(--p),#6d28d9);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit">📋 Copy All</button>' +
+    '</div>';
+    document.body.appendChild(box);
+  } catch(e) {
+    toast('Caption error: ' + e.message, 'err');
+  }
+}
+
+// Chat state
+var chatHistory = [];
+
+async function sendChat() {
+  if (!S.groqKey) { toast('Set Groq API key in API Keys page first', 'warn'); return; }
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  // Add user message
+  chatHistory.push({ role: 'user', content: msg });
+  appendChatMsg('user', msg);
+
+  var btn = document.getElementById('chatSendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  // Add typing indicator
+  var typingId = 'typing_' + Date.now();
+  appendChatMsg('assistant', '<i class="fas fa-circle-notch fa-spin"></i> Thinking...', typingId);
+
+  try {
+    var r = await fetch(PROXY + '/proxy/groq/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-groq-api-key': S.groqKey },
+      body: JSON.stringify({ messages: chatHistory })
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error);
+
+    // Remove typing, add reply
+    var typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
+    chatHistory.push({ role: 'assistant', content: data.reply });
+    appendChatMsg('assistant', data.reply);
+  } catch(e) {
+    var typingEl2 = document.getElementById(typingId);
+    if (typingEl2) typingEl2.remove();
+    appendChatMsg('assistant', '❌ Error: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+}
+
+function appendChatMsg(role, content, id) {
+  var container = document.getElementById('chatMessages');
+  if (!container) return;
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  if (id) div.id = id;
+  div.innerHTML = '<div class="chat-bubble">' + content.replace(/\n/g, '<br>') + '</div>';
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+var suggestType = 'video';
+var suggestCat = 'cinematic';
+
+async function getSuggestions() {
+  if (!S.groqKey) { toast('Set Groq API key first', 'warn'); return; }
+  var btn = document.getElementById('getSuggestBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+  try {
+    var r = await fetch(PROXY + '/proxy/groq/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-groq-api-key': S.groqKey },
+      body: JSON.stringify({ category: suggestCat, type: suggestType })
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error);
+    var list = document.getElementById('suggestList');
+    if (!list) return;
+    list.innerHTML = data.suggestions.map(function(s, i) {
+      return '<div style="background:rgba(168,85,247,.06);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .2s;display:flex;gap:8px;align-items:flex-start" onclick="useSuggestion(this.querySelector(\'span\').textContent)">' +
+        '<span style="color:var(--p2);font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px">' + (i+1) + '</span>' +
+        '<span style="font-size:12px;color:var(--t2);line-height:1.5">' + escHtml(s) + '</span>' +
+        '<button style="margin-left:auto;background:none;border:none;color:var(--p2);cursor:pointer;font-size:12px;flex-shrink:0" title="Copy"><i class="fas fa-copy"></i></button>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    toast('Suggest error: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-lightbulb"></i>Get Suggestions';
+}
+
+function useSuggestion(text) {
+  // Copy to clipboard and navigate to video page
+  navigator.clipboard.writeText(text).catch(function(){});
+  toast('Prompt copied! Paste in Video/Image Generate', 'ok');
+}
+
+async function genVideoScript() {
+  if (!S.groqKey) { toast('Set Groq API key first', 'warn'); return; }
+  var topic = document.getElementById('scriptTopic').value.trim();
+  if (!topic) { toast('Enter a topic', 'err'); return; }
+  var btn = document.getElementById('genScriptBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+  try {
+    var r = await fetch(PROXY + '/proxy/groq/video-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-groq-api-key': S.groqKey },
+      body: JSON.stringify({
+        topic: topic,
+        duration: document.getElementById('scriptDur').value,
+        style: document.getElementById('scriptStyle').value
+      })
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error);
+    var sc = data.script;
+    document.getElementById('scriptPromptOut').value = sc.prompt || '';
+    document.getElementById('scriptNegOut').value = sc.negative || '';
+    document.getElementById('scriptModelOut').value = sc.model || '';
+    document.getElementById('scriptRatioOut').value = sc.ratio || '';
+    document.getElementById('scriptResult').style.display = 'block';
+    toast('Script generated!', 'ok');
+  } catch(e) {
+    toast('Script error: ' + e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-clapperboard"></i>Generate Script';
+}
+
+function useVideoScript() {
+  var prompt = document.getElementById('scriptPromptOut').value;
+  var neg = document.getElementById('scriptNegOut').value;
+  if (prompt) {
+    var vp = document.getElementById('vPrompt');
+    var vn = document.getElementById('vNeg');
+    if (vp) vp.value = prompt;
+    if (vn) vn.value = neg;
+    goPage('video');
+    toast('Script applied to Video Generate!', 'ok');
+  }
 }
 
 function toggleBulk() {
@@ -2740,6 +3058,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // ── API Keys page
   document.getElementById('addKeyBtn').addEventListener('click', addKey);
   document.getElementById('saveImgBBBtn').addEventListener('click', saveImgBBKey);
+  document.getElementById('saveGroqBtn').addEventListener('click', saveGroqKey);
   document.getElementById('toggleBulkBtn').addEventListener('click', toggleBulk);
   document.getElementById('addBulkBtn').addEventListener('click', addBulk);
   document.getElementById('uploadKeysBtn').addEventListener('click', function() { document.getElementById('keyFileInp').click(); });
@@ -2814,6 +3133,46 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn.dataset.action === 'rejectUser') rejectUser(btn.dataset.id);
   });
 
+  // ── AI Assistant page
+  document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+  document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+  document.getElementById('clearChatBtn').addEventListener('click', function() {
+    chatHistory = [];
+    var cm = document.getElementById('chatMessages');
+    if (cm) cm.innerHTML = '<div class="chat-msg assistant"><div class="chat-bubble">👋 Chat cleared! Tanya apa saja tentang ARKX Motion Pro.</div></div>';
+  });
+  document.getElementById('getSuggestBtn').addEventListener('click', getSuggestions);
+  document.getElementById('genScriptBtn').addEventListener('click', genVideoScript);
+  document.getElementById('useScriptBtn').addEventListener('click', useVideoScript);
+  // Suggest category
+  document.getElementById('suggestCatRow').addEventListener('click', function(e) {
+    var btn = e.target.closest('.rb');
+    if (!btn) return;
+    document.querySelectorAll('#suggestCatRow .rb').forEach(function(b) { b.classList.remove('sel'); });
+    btn.classList.add('sel');
+    suggestCat = btn.dataset.cat;
+  });
+  // Suggest type
+  document.getElementById('stypeVideo').addEventListener('click', function() {
+    suggestType = 'video';
+    this.classList.add('on');
+    document.getElementById('stypeImage').classList.remove('on');
+  });
+  document.getElementById('stypeImage').addEventListener('click', function() {
+    suggestType = 'image';
+    this.classList.add('on');
+    document.getElementById('stypeVideo').classList.remove('on');
+  });
+  // Load saved Groq key
+  if (S.groqKey) {
+    var gInp = document.getElementById('groqKeyInp');
+    if (gInp) gInp.value = S.groqKey;
+    var gSt = document.getElementById('groqStatus');
+    if (gSt) { gSt.textContent = 'Saved ✓'; gSt.style.color = 'var(--g)'; }
+  }
+
   // ── Drop zones setup
   setupDropZone('vDZ', 'vIF', 'vImg', 'vImgUrl', 'vPrev', 'image');
   setupDropZone('mImgDZ', 'mIF', 'mImg', 'mImgUrl', 'mPrev', 'image');
@@ -2849,5 +3208,18 @@ document.addEventListener('DOMContentLoaded', function() {
   dbg('INFO', 'ARKX Motion Pro initialized. Backend: ' + PROXY);
 });
 </script>
+<style>
+/* ═══ CHAT BUBBLES ═══ */
+.chat-msg{display:flex;margin-bottom:2px}
+.chat-msg.user{justify-content:flex-end}
+.chat-msg.assistant{justify-content:flex-start}
+.chat-bubble{max-width:85%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6}
+.chat-msg.user .chat-bubble{background:linear-gradient(135deg,var(--p),#6d28d9);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.assistant .chat-bubble{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);color:var(--t2);border-bottom-left-radius:4px}
+/* ═══ ENHANCE BUTTON ═══ */
+.enh-wrap{position:relative}
+.enh-btn{position:absolute;right:8px;bottom:8px;background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(0,245,255,.2));border:1px solid rgba(168,85,247,.4);border-radius:8px;color:var(--p2);cursor:pointer;font-size:11px;font-weight:700;padding:4px 9px;display:flex;align-items:center;gap:4px;transition:all .2s;font-family:inherit;z-index:1}
+.enh-btn:hover{background:linear-gradient(135deg,rgba(168,85,247,.5),rgba(0,245,255,.3));box-shadow:0 0 15px rgba(168,85,247,.3)}
+</style>
 </body>
 </html>
