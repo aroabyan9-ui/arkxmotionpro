@@ -415,7 +415,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
         <div class="mc sel" data-m="kling-v2-6-pro"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">5s / 10s</div></div>
         <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">5s / 10s</div></div>
         <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">1080p</div></div>
-        <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance Pro</div><div class="mc-b">1080p</div></div>
+        <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance 2</div><div class="mc-b">1080p</div></div>
         <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">1080p</div></div>
         <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">Turbo</div></div>
       </div>
@@ -1636,12 +1636,12 @@ async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFai
 // VIDEO GENERATION
 // ══════════════════════════════════════════════
 var VIDEO_ENDPOINTS = {
-  'kling-v2-6-pro': { post: '/v1/ai/image-to-video/kling-v2-6-pro', poll: '/v1/ai/image-to-video/kling-v2-6' },
-  'kling-v2-5-pro': { post: '/v1/ai/image-to-video/kling-v2-5-pro', poll: '/v1/ai/image-to-video/kling-v2-5' },
-  'wan-2-6':        { post: '/v1/ai/image-to-video/wan-v2-6-1080p',  poll: '/v1/ai/image-to-video/wan-v2-6-1080p' },
-  'seedance-pro':   { post: '/v1/ai/image-to-video/seedance-pro-1080p', poll: '/v1/ai/image-to-video/seedance-pro-1080p' },
+  'kling-v2-6-pro': { post: '/v1/ai/image-to-video/kling-v2-6-pro',           poll: '/v1/ai/image-to-video/kling-v2-6' },
+  'kling-v2-5-pro': { post: '/v1/ai/image-to-video/kling-v2-5-pro',           poll: '/v1/ai/image-to-video/kling-v2-5' },
+  'wan-2-6':        { post: '/v1/ai/image-to-video/wan-v2-6-1080p',            poll: '/v1/ai/image-to-video/wan-v2-6-1080p' },
+  'seedance-pro':   { post: '/v1/ai/image-to-video/seedance-pro-1080p',        poll: '/v1/ai/image-to-video/seedance-pro-1080p' },
   'hailuo-2-3':     { post: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p', poll: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p' },
-  'runway-gen4':    { post: '/v1/ai/image-to-video/runway-gen4-turbo', poll: '/v1/ai/image-to-video/runway-gen4-turbo' }
+  'runway-gen4':    { post: '/v1/ai/image-to-video/runway-gen4-turbo',         poll: '/v1/ai/image-to-video/runway-gen4-turbo' }
 };
 
 async function genVideo() {
@@ -1660,26 +1660,62 @@ async function genVideo() {
   document.getElementById('vRes').innerHTML = '<div class="res-ph"><i class="fas fa-spinner fa-spin" style="opacity:.5"></i><p>Generating video...</p></div>';
 
   try {
-    var body = {
-      prompt: prompt,
-      negative_prompt: document.getElementById('vNeg').value.trim() || undefined,
-      duration: parseInt(S.vDur),
-      aspect_ratio: S.vRatio,
-      cfg_scale: parseFloat(document.getElementById('cfgSlider').value),
-      generate_audio: document.getElementById('vAudio').checked
-    };
+    var imgUrl = null;
     // Upload image if i2v mode
     if (S.vMode === 'i2v') {
       if (!S.imgs.vImgUrl && !S.imgs.vImg) { toast('Upload a reference image for Image-to-Video mode', 'err'); resetVideoBtn(); return; }
-      var imgUrl = S.imgs.vImgUrl;
+      imgUrl = S.imgs.vImgUrl;
       if (!imgUrl && S.imgs.vImg) {
         document.getElementById('vPT').textContent = 'Uploading image...';
         imgUrl = await uploadImgBB(S.imgs.vImg, 'image');
         S.imgs.vImgUrl = imgUrl;
       }
-      body.image_url = imgUrl;
     }
-    dbg('REQUEST', 'genVideo: ' + S.vModel + ' prompt=' + prompt.substring(0, 60));
+
+    // Build body per-model — each model has different field names
+    var body = { prompt: prompt };
+    var m = S.vModel;
+    var dur = parseInt(S.vDur);
+    var ratio = S.vRatio;
+    var cfg = parseFloat(document.getElementById('cfgSlider').value);
+    var audio = document.getElementById('vAudio').checked;
+    var neg = document.getElementById('vNeg').value.trim();
+
+    if (m === 'kling-v2-6-pro' || m === 'kling-v2-5-pro') {
+      // Kling: image_url (optional for t2v), duration, aspect_ratio, cfg_scale, generate_audio
+      body.duration = dur;
+      body.aspect_ratio = ratio;
+      body.cfg_scale = cfg;
+      body.generate_audio = audio;
+      if (neg) body.negative_prompt = neg;
+      if (imgUrl) body.image_url = imgUrl;
+
+    } else if (m === 'wan-2-6') {
+      // WAN 2.6: image_url (optional), prompt, negative_prompt, duration, aspect_ratio
+      body.duration = dur;
+      body.aspect_ratio = ratio;
+      if (neg) body.negative_prompt = neg;
+      if (imgUrl) body.image_url = imgUrl;
+
+    } else if (m === 'seedance-pro') {
+      // Seedance Pro: image (not image_url!), prompt, duration, aspect_ratio
+      body.duration = dur;
+      body.aspect_ratio = ratio;
+      if (imgUrl) body.image = imgUrl; // Seedance uses 'image' field
+
+    } else if (m === 'hailuo-2-3') {
+      // Hailuo: first_frame_image (not image_url!), prompt, prompt_optimizer
+      body.prompt_optimizer = true;
+      if (imgUrl) body.first_frame_image = imgUrl; // Hailuo uses 'first_frame_image'
+
+    } else if (m === 'runway-gen4') {
+      // Runway Gen4: image_url (optional), duration, ratio
+      body.duration = dur;
+      body.ratio = ratio;
+      if (imgUrl) body.image_url = imgUrl;
+    }
+
+    dbg('REQUEST', 'genVideo: ' + m + ' mode=' + S.vMode + ' prompt=' + prompt.substring(0, 60));
     var resp = await mFetchWithRotation('POST', ep.post, body);
     var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id in response: ' + JSON.stringify(resp));
