@@ -54,11 +54,11 @@ router.post('/magnific/*', async (req, res) => {
   const apiKey = req.headers['x-magnific-api-key'] || req.body?._apiKey;
   if (!apiKey) return res.status(401).json({ error: 'Missing x-magnific-api-key header' });
 
-  // Hapus _apiKey dari body kalau ada
   const body = { ...req.body };
   delete body._apiKey;
 
-  const targetPath = '/' + req.params[0];
+  // req.params[0] captures everything after /magnific/
+  const targetPath = '/v1/' + req.params[0].replace(/^v1\//, '');
   console.log(`[Proxy] POST ${targetPath}`);
   await forwardToMagnific('POST', targetPath, body, apiKey, res);
 });
@@ -68,7 +68,8 @@ router.get('/magnific/*', async (req, res) => {
   const apiKey = req.headers['x-magnific-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'Missing x-magnific-api-key header' });
 
-  const targetPath = '/' + req.params[0];
+  // req.params[0] captures everything after /magnific/
+  const targetPath = '/v1/' + req.params[0].replace(/^v1\//, '');
   console.log(`[Proxy] GET ${targetPath}`);
   await forwardToMagnific('GET', targetPath, null, apiKey, res);
 });
