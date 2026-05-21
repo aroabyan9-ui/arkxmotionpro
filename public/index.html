@@ -406,6 +406,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="na" data-pg="motion"><i class="fas fa-wand-sparkles"></i>Motion Control</div>
     <div class="sep"></div>
     <div class="na" data-pg="image"><i class="fas fa-image"></i>Image Generate</div>
+    <div class="na" data-pg="hfimage"><i class="fas fa-brain" style="color:#fbbf24"></i>HF Image <span style="font-size:9px;color:var(--g);margin-left:3px">FREE</span></div>
     <div class="sep"></div>
     <div class="na" data-pg="upscale"><i class="fas fa-expand-arrows-alt"></i>Upscale Ultra</div>
     <div class="na" data-pg="relight"><i class="fas fa-sun"></i>AI Relight</div>
@@ -703,6 +704,75 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 </div>
 </div>
 
+<!-- ══ PAGE: HF IMAGE GENERATE (FREE) ══ -->
+<div class="pg" id="pg-hfimage">
+<div class="g2">
+<div>
+<div class="card">
+  <div class="ch"><i class="fas fa-brain" style="color:#fbbf24"></i>HuggingFace Image Generate <span style="font-size:10px;color:var(--g);margin-left:6px">🆓 GRATIS</span></div>
+  <div class="cb">
+    <div class="info-b"><i class="fas fa-circle-info"></i>
+      <div>Generate gambar gratis pakai HuggingFace. Butuh <b style="color:#fbbf24">HF API Key</b> (gratis di huggingface.co). Tidak butuh Magnific key!</div>
+    </div>
+    <div class="fg"><label>Model</label>
+      <div class="mgrid" id="hfMG">
+        <div class="mc sel" data-m="black-forest-labs/FLUX.1-schnell"><div class="mc-i">⚡</div><div class="mc-n">FLUX.1 Schnell</div><div class="mc-b">Fastest · Free</div></div>
+        <div class="mc" data-m="black-forest-labs/FLUX.1-dev"><div class="mc-i">🔥</div><div class="mc-n">FLUX.1 Dev</div><div class="mc-b">High Quality</div></div>
+        <div class="mc" data-m="stabilityai/stable-diffusion-xl-base-1.0"><div class="mc-i">🎨</div><div class="mc-n">SDXL 1.0</div><div class="mc-b">Classic SD</div></div>
+        <div class="mc" data-m="runwayml/stable-diffusion-v1-5"><div class="mc-i">🚀</div><div class="mc-n">SD 1.5</div><div class="mc-b">Fast & Light</div></div>
+        <div class="mc" data-m="Lykon/dreamshaper-8"><div class="mc-i">✨</div><div class="mc-n">DreamShaper 8</div><div class="mc-b">Artistic</div></div>
+        <div class="mc" data-m="SG161222/Realistic_Vision_V6.0_B1_noVAE"><div class="mc-i">📸</div><div class="mc-n">Realistic Vision</div><div class="mc-b">Photorealistic</div></div>
+      </div>
+    </div>
+    <div class="fg"><label>Prompt <span style="color:var(--r)">*</span></label>
+      <div class="enh-wrap">
+        <textarea class="ta" id="hfPrompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
+        <button class="enh-btn" onclick="groqEnhancePrompt(document.getElementById('hfPrompt').value,'image','hfPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
+      </div>
+    </div>
+    <div class="fg"><label>Negative Prompt <span style="color:var(--t3);font-size:10px">(optional)</span></label>
+      <textarea class="ta" id="hfNeg" rows="2" placeholder="blurry, low quality, watermark..."></textarea>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Width</label>
+        <select class="sel" id="hfWidth">
+          <option value="512">512px</option>
+          <option value="768">768px</option>
+          <option value="1024" selected>1024px</option>
+        </select>
+      </div>
+      <div class="fg"><label>Height</label>
+        <select class="sel" id="hfHeight">
+          <option value="512">512px</option>
+          <option value="768">768px</option>
+          <option value="1024" selected>1024px</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-gen" id="hfGenBtn" style="background:linear-gradient(135deg,#fbbf24,#d97706,#f97316)"><i class="fas fa-brain"></i>Generate FREE</button>
+  </div>
+</div>
+</div>
+<div>
+<div class="card">
+  <div class="ch"><i class="fas fa-image"></i>Result
+    <div class="ch-r" id="hfRA" style="display:none">
+      <button class="bsm" id="hfDlBtn"><i class="fas fa-download"></i>Download</button>
+      <button class="bsm" id="hfCpBtn"><i class="fas fa-copy"></i>Copy URL</button>
+    </div>
+  </div>
+  <div class="cb">
+    <div class="res-a" id="hfRes"><div class="res-ph"><i class="fas fa-brain" style="color:#fbbf24;opacity:.3"></i><p>Generated image appears here</p></div></div>
+    <div class="prog-w" id="hfProg" style="display:none">
+      <div class="prog-bg"><div class="prog-b" id="hfPB" style="background:linear-gradient(90deg,#fbbf24,#f97316)"></div></div>
+      <div class="prog-t" id="hfPT">Generating...</div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
 <!-- ══ PAGE: UPSCALE ══ -->
 <div class="pg" id="pg-upscale">
 <div class="g2">
@@ -896,6 +966,20 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="info-b" style="margin-top:10px;margin-bottom:0">
       <i class="fas fa-circle-info"></i>
       <div>Groq key dipakai untuk: <b style="color:var(--p2)">✨ Enhance Prompt</b>, <b style="color:var(--c)">💬 AI Assistant</b>, <b style="color:#f97316">🎬 Video Script</b>, <b style="color:var(--g)">💡 Suggestions</b>. Gratis di <a href="https://console.groq.com" target="_blank" style="color:var(--c)">console.groq.com</a></div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="ch"><i class="fas fa-brain" style="color:#fbbf24"></i>HuggingFace API Key <span style="font-size:10px;color:var(--g);margin-left:6px">FREE Image Generate</span></div>
+  <div class="cb">
+    <div class="add-kr">
+      <input type="text" class="inp" id="hfKeyInp" placeholder="hf_... (from huggingface.co/settings/tokens)">
+      <button class="bp" style="background:linear-gradient(135deg,#fbbf24,#d97706)" id="saveHFBtn"><i class="fas fa-save"></i>Save</button>
+    </div>
+    <span id="hfStatus" style="font-size:11px;color:var(--t3)"></span>
+    <div class="info-b" style="margin-top:10px;margin-bottom:0">
+      <i class="fas fa-circle-info"></i>
+      <div>HuggingFace key untuk <b style="color:var(--g)">🆓 Image Generate GRATIS</b> — FLUX.1, SDXL, DreamShaper dll. Daftar gratis di <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:var(--c)">huggingface.co</a></div>
     </div>
   </div>
 </div>
@@ -1263,8 +1347,8 @@ var S = {
   mModel: 'kling-v2-6-pro', mRatio: 'widescreen_16_9', mDur: '5', mCharOrientation: 'video',
   iModel: 'mystic',
   upScale: '2x',
-  keys: [], proxies: [], history: [], imgbbKey: '', groqKey: '',
-  results: { v: null, m: null, i: null, up: null, rl: null, st: null },
+  keys: [], proxies: [], history: [], imgbbKey: '', groqKey: '', hfKey: '',
+  results: { v: null, m: null, i: null, up: null, rl: null, st: null, hf: null },
   imgs: {
     vImg: null, vImgUrl: null,
     mImg: null, mImgUrl: null, mVid: null, mVidUrl: null,
@@ -1287,6 +1371,7 @@ var DB = {
 S.keys = DB.load('keys', []);
 S.imgbbKey = DB.load('imgbbKey', '');
 S.groqKey = DB.load('groqKey', '');
+S.hfKey = DB.load('hfKey', '');
 S.proxies = DB.load('proxies', []);
 S.history = DB.load('history', []);
 
@@ -1503,7 +1588,8 @@ function goPage(page) {
     keys: 'API Keys', proxy: 'Proxy Manager', history: 'History',
     stats: 'Statistics', debug: 'Debug Console', admin: 'Admin Panel',
     assistant: 'AI Assistant',
-    batch: 'Batch Queue'
+    batch: 'Batch Queue',
+    hfimage: '🆓 HF Image Generate'
   };
   var tb = document.getElementById('tbTitle');
   if (tb) tb.textContent = titles[page] || page;
@@ -1688,6 +1774,89 @@ function saveGroqKey() {
   var st = document.getElementById('groqStatus');
   if (st) { st.textContent = 'Saved ✓'; st.style.color = 'var(--g)'; }
   toast('Groq key saved!', 'ok');
+}
+
+function saveHFKey() {
+  var v = document.getElementById('hfKeyInp').value.trim();
+  if (!v) { toast('Enter HuggingFace API key', 'err'); return; }
+  S.hfKey = v;
+  DB.save('hfKey', v);
+  var st = document.getElementById('hfStatus');
+  if (st) { st.textContent = 'Saved ✓'; st.style.color = 'var(--g)'; }
+  toast('HuggingFace key saved!', 'ok');
+}
+
+// HF selected model
+var S_hfModel = 'black-forest-labs/FLUX.1-schnell';
+
+async function genHFImage() {
+  if (!S.hfKey) { toast('Set HuggingFace API key in API Keys page first', 'warn'); return; }
+  var prompt = document.getElementById('hfPrompt').value.trim();
+  if (!prompt) { toast('Enter a prompt', 'err'); return; }
+
+  var btn = document.getElementById('hfGenBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
+  document.getElementById('hfProg').style.display = 'block';
+  document.getElementById('hfRA').style.display = 'none';
+  document.getElementById('hfRes').innerHTML = '<div class="res-ph"><i class="fas fa-spinner fa-spin" style="opacity:.5"></i><p>Generating with HuggingFace...</p></div>';
+  document.getElementById('hfPB').style.width = '30%';
+  document.getElementById('hfPT').textContent = 'Sending to HuggingFace...';
+
+  var maxRetries = 3;
+  var attempt = 0;
+
+  async function tryGenerate() {
+    attempt++;
+    try {
+      var r = await fetch(PROXY + '/proxy/hf/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-hf-api-key': S.hfKey },
+        body: JSON.stringify({
+          prompt: prompt,
+          model: S_hfModel,
+          negative_prompt: document.getElementById('hfNeg').value.trim() || undefined,
+          width: parseInt(document.getElementById('hfWidth').value),
+          height: parseInt(document.getElementById('hfHeight').value)
+        })
+      });
+      var data = await r.json();
+
+      if (r.status === 503 && data.loading) {
+        // Model loading — retry after delay
+        document.getElementById('hfPT').textContent = 'Model loading... retry ' + attempt + '/' + maxRetries + ' in 20s';
+        document.getElementById('hfPB').style.width = (attempt * 20) + '%';
+        if (attempt < maxRetries) {
+          await new Promise(function(res) { setTimeout(res, 20000); });
+          return tryGenerate();
+        } else {
+          throw new Error('Model still loading after ' + maxRetries + ' retries. Try again in 1 minute.');
+        }
+      }
+
+      if (!data.success) throw new Error(data.error || 'Generation failed');
+
+      document.getElementById('hfPB').style.width = '100%';
+      document.getElementById('hfPT').textContent = 'Done!';
+      document.getElementById('hfProg').style.display = 'none';
+
+      var url = data.url || data.dataUrl;
+      S.results.hf = url;
+      document.getElementById('hfRes').innerHTML = '<img src="' + url + '" style="width:100%;max-height:400px;object-fit:contain" alt="Generated">';
+      document.getElementById('hfRA').style.display = 'flex';
+      addHistory({ type: 'image', model: 'hf-' + S_hfModel.split('/').pop(), prompt: prompt, url: url, thumb: url });
+      toast('Image generated! 🆓', 'ok');
+
+    } catch(e) {
+      document.getElementById('hfProg').style.display = 'none';
+      document.getElementById('hfRes').innerHTML = '<div class="res-ph"><i class="fas fa-circle-xmark" style="color:var(--r)"></i><p>' + escHtml(e.message) + '</p></div>';
+      toast('HF Error: ' + e.message, 'err');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-brain"></i>Generate FREE';
+  }
+
+  tryGenerate();
 }
 
 // ══════════════════════════════════════════════
@@ -3244,6 +3413,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('addKeyBtn').addEventListener('click', addKey);
   document.getElementById('saveImgBBBtn').addEventListener('click', saveImgBBKey);
   document.getElementById('saveGroqBtn').addEventListener('click', saveGroqKey);
+  document.getElementById('saveHFBtn').addEventListener('click', saveHFKey);
   document.getElementById('toggleBulkBtn').addEventListener('click', toggleBulk);
   document.getElementById('addBulkBtn').addEventListener('click', addBulk);
   document.getElementById('uploadKeysBtn').addEventListener('click', function() { document.getElementById('keyFileInp').click(); });
@@ -3358,6 +3528,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (gInp) gInp.value = S.groqKey;
     var gSt = document.getElementById('groqStatus');
     if (gSt) { gSt.textContent = 'Saved ✓'; gSt.style.color = 'var(--g)'; }
+  }
+
+  // ── HF Image page
+  document.getElementById('hfMG').addEventListener('click', function(e) {
+    var mc = e.target.closest('.mc');
+    if (!mc) return;
+    document.querySelectorAll('#hfMG .mc').forEach(function(m) { m.classList.remove('sel'); });
+    mc.classList.add('sel');
+    S_hfModel = mc.dataset.m;
+  });
+  document.getElementById('hfGenBtn').addEventListener('click', genHFImage);
+  document.getElementById('hfDlBtn').addEventListener('click', function() {
+    var url = S.results.hf; if (!url) return;
+    var a = document.createElement('a'); a.href = url; a.download = 'arkx-hf-' + Date.now() + '.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+  document.getElementById('hfCpBtn').addEventListener('click', function() {
+    var url = S.results.hf; if (!url) return;
+    navigator.clipboard.writeText(url).then(function() { toast('URL copied!', 'ok'); });
+  });
+  // Load saved HF key
+  if (S.hfKey) {
+    var hfInp = document.getElementById('hfKeyInp');
+    if (hfInp) hfInp.value = S.hfKey;
+    var hfSt = document.getElementById('hfStatus');
+    if (hfSt) { hfSt.textContent = 'Saved ✓'; hfSt.style.color = 'var(--g)'; }
   }
 
   // ── Drop zones setup
