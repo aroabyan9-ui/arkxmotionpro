@@ -902,6 +902,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 <div class="card">
   <div class="ch"><i class="fas fa-key"></i>Magnific API Keys <span id="magStats" style="margin-left:8px;font-size:11px"></span>
     <div class="ch-r">
+      <button class="bsm" id="resetAllKeysBtn" style="border-color:rgba(0,255,136,.4);color:var(--g)"><i class="fas fa-rotate"></i>Reset All</button>
       <button class="bsm" id="toggleBulkBtn"><i class="fas fa-list"></i>Bulk Add</button>
       <button class="bsm" id="uploadKeysBtn"><i class="fas fa-upload"></i>Upload .txt</button>
       <input type="file" id="keyFileInp" accept=".txt" style="display:none">
@@ -1562,8 +1563,9 @@ function renderKeys() {
       '</div>' +
       '<span class="kbg ' + k.status + '">' + statusLabel + '</span>' +
       '<div class="ki-acts">' +
-        (k.status !== 'active' ? '<button class="bsm" data-action="reset" data-id="' + k.id + '"><i class="fas fa-rotate"></i></button>' : '') +
-        '<button class="bsm btn-danger" data-action="remove" data-id="' + k.id + '"><i class="fas fa-trash"></i></button>' +
+        (k.status !== 'active' ? '<button class="bsm" data-action="reset" data-id="' + k.id + '" title="Reactivate"><i class="fas fa-rotate"></i></button>' : '') +
+        '<button class="bsm" data-action="test" data-id="' + k.id + '" title="Test key"><i class="fas fa-vial"></i></button>' +
+        '<button class="bsm btn-danger" data-action="remove" data-id="' + k.id + '" title="Delete"><i class="fas fa-trash"></i></button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -1635,6 +1637,37 @@ function resetKey(id) {
   DB.save('keys', S.keys);
   renderKeys(); updateSBStatus();
   toast('Key reactivated', 'ok');
+}
+
+function resetAllKeys() {
+  S.keys.forEach(function(k) { k.status = 'active'; k.errors = 0; });
+  DB.save('keys', S.keys);
+  renderKeys(); updateSBStatus();
+  toast('All keys reset to active!', 'ok');
+}
+
+async function testKey(id) {
+  var k = S.keys.find(function(x) { return x.id === id; });
+  if (!k) return;
+  toast('Testing key: ' + k.label + '...', 'ok');
+  try {
+    // Simple test — get mystic task list (lightweight endpoint)
+    var r = await fetch(PROXY + '/proxy/magnific/v1/ai/mystic', {
+      headers: { 'x-magnific-api-key': k.key }
+    });
+    var data = await r.json();
+    if (r.status === 401 || r.status === 403) {
+      toast('Key INVALID: ' + k.label + ' (401/403)', 'err');
+      k.status = 'dead';
+    } else {
+      toast('Key VALID: ' + k.label + ' ✓ (HTTP ' + r.status + ')', 'ok');
+      k.status = 'active'; k.errors = 0;
+    }
+    DB.save('keys', S.keys);
+    renderKeys(); updateSBStatus();
+  } catch(e) {
+    toast('Test error: ' + e.message, 'err');
+  }
 }
 
 function saveImgBBKey() {
@@ -2062,8 +2095,18 @@ async function mFetchWithRotation(method, path, body) {
     } catch(e) {
       incKeyReq(key.id, true);
       if (e.status === 401 || e.status === 403) {
-        markKeyDead(key.id);
-        dbg('DEAD_KEY', 'Key dead (401/403): ' + key.label + ' — trying next');
+        // Verify before marking dead — retry once more
+        dbg('DEAD_KEY', 'Key 401/403: ' + key.label + ' — verifying...');
+        try {
+          var verify = await mFetch(method, path, body, key.key);
+          dbg('SUCCESS', 'Key verified OK on retry: ' + key.label);
+          return verify;
+        } catch(e2) {
+          if (e2.status === 401 || e2.status === 403) {
+            markKeyDead(key.id);
+            dbg('DEAD_KEY', 'Key confirmed dead: ' + key.label + ' — trying next');
+          }
+        }
         continue;
       } else if (e.status === 429 || e.status === 402) {
         markKeyQuota(key.id);
@@ -3214,7 +3257,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var id = btn.dataset.id;
     if (action === 'remove') removeKey(id);
     if (action === 'reset') resetKey(id);
+    if (action === 'test') testKey(id);
   });
+  document.getElementById('resetAllKeysBtn').addEventListener('click', resetAllKeys);
   // Load saved ImgBB key into input
   if (S.imgbbKey) {
     document.getElementById('imgbbKeyInp').value = S.imgbbKey;
