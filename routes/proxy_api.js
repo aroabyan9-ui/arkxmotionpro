@@ -27,24 +27,27 @@ const IMGBB_BASE    = 'https://api.imgbb.com';
 // ── Helper: forward request ke Magnific ──
 async function forwardToMagnific(method, path_, body, apiKey, res) {
   try {
+    const fullUrl = MAGNIFIC_BASE + path_;
+    console.log(`[Proxy] ${method} → ${fullUrl}`);
     const config = {
       method,
-      url: MAGNIFIC_BASE + path_,
+      url: fullUrl,
       headers: {
         'x-magnific-api-key': apiKey,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      timeout: 30000,
-      validateStatus: () => true // jangan throw untuk status apapun
+      timeout: 60000, // increased to 60s
+      validateStatus: () => true
     };
     if (body && method !== 'GET') config.data = body;
 
     const resp = await axios(config);
+    console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
     res.status(resp.status).json(resp.data);
   } catch (err) {
     const msg = err.response?.data?.message || err.message || 'Proxy error';
-    console.error('[Proxy] Error:', msg);
+    console.error('[Proxy] Error:', method, path_, msg);
     res.status(500).json({ error: msg, proxy: true });
   }
 }
@@ -57,9 +60,10 @@ router.post('/magnific/*', async (req, res) => {
   const body = { ...req.body };
   delete body._apiKey;
 
-  // req.params[0] captures everything after /magnific/
-  const targetPath = '/v1/' + req.params[0].replace(/^v1\//, '');
-  console.log(`[Proxy] POST ${targetPath}`);
+  // Build target path — use req.params[0] which captures everything after /magnific/
+  const rawParam = req.params[0] || '';
+  const targetPath = rawParam.startsWith('v1/') ? ('/' + rawParam) : ('/v1/' + rawParam);
+  console.log(`[Proxy] POST targetPath=${targetPath}`);
   await forwardToMagnific('POST', targetPath, body, apiKey, res);
 });
 
@@ -68,9 +72,10 @@ router.get('/magnific/*', async (req, res) => {
   const apiKey = req.headers['x-magnific-api-key'];
   if (!apiKey) return res.status(401).json({ error: 'Missing x-magnific-api-key header' });
 
-  // req.params[0] captures everything after /magnific/
-  const targetPath = '/v1/' + req.params[0].replace(/^v1\//, '');
-  console.log(`[Proxy] GET ${targetPath}`);
+  // Build target path — use req.params[0] which captures everything after /magnific/
+  const rawParam = req.params[0] || '';
+  const targetPath = rawParam.startsWith('v1/') ? ('/' + rawParam) : ('/v1/' + rawParam);
+  console.log(`[Proxy] GET targetPath=${targetPath}`);
   await forwardToMagnific('GET', targetPath, null, apiKey, res);
 });
 
