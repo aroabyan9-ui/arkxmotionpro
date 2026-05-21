@@ -136,4 +136,186 @@ router.post('/upload-video', upload.single('file'), async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════
+// GROQ AI — Prompt Enhancement, Chat, Suggestions, Caption
+// ══════════════════════════════════════════════
+const GROQ_BASE = 'https://api.groq.com/openai/v1';
+
+async function groqChat(apiKey, messages, model) {
+  model = model || 'llama-3.3-70b-versatile';
+  const resp = await axios.post(`${GROQ_BASE}/chat/completions`, {
+    model,
+    messages,
+    max_tokens: 1024,
+    temperature: 0.7
+  }, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    timeout: 30000
+  });
+  return resp.data.choices[0].message.content;
+}
+
+// ── POST /proxy/groq/enhance ── Enhance prompt untuk video/image generation
+router.post('/groq/enhance', async (req, res) => {
+  const apiKey = req.headers['x-groq-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-groq-api-key header' });
+  const { prompt, type } = req.body; // type: 'video' | 'image' | 'motion'
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+
+  try {
+    const typeDesc = type === 'video' ? 'AI video generation (cinematic, motion, camera angles, lighting)'
+      : type === 'motion' ? 'AI motion control video (character movement, body motion, animation)'
+      : type === 'image' ? 'AI image generation (visual details, style, lighting, composition)'
+      : 'AI media generation';
+
+    const system = `You are an expert prompt engineer for ${typeDesc}. 
+Enhance the user's short prompt into a detailed, vivid, professional prompt.
+Rules:
+- Keep the original intent and subject
+- Add cinematic details, lighting, camera angles, mood, style
+- For video: add motion descriptions, camera movement
+- For image: add artistic style, color palette, composition
+- Max 200 words
+- Return ONLY the enhanced prompt, no explanation`;
+
+    const enhanced = await groqChat(apiKey, [
+      { role: 'system', content: system },
+      { role: 'user', content: prompt }
+    ]);
+    res.json({ success: true, enhanced: enhanced.trim() });
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    console.error('[Groq] Enhance error:', msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── POST /proxy/groq/caption ── Auto caption dari URL hasil generate
+router.post('/groq/caption', async (req, res) => {
+  const apiKey = req.headers['x-groq-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-groq-api-key header' });
+  const { url, type, originalPrompt } = req.body;
+  if (!url) return res.status(400).json({ error: 'url required' });
+
+  try {
+    const system = `You are a creative content writer. Generate a short, engaging social media caption for AI-generated ${type || 'media'}.`;
+    const userMsg = `Generate 3 caption options for this AI-generated ${type || 'content'}.
+Original prompt used: "${originalPrompt || 'AI generated'}"
+Make them engaging, use relevant emojis, suitable for Instagram/TikTok.
+Format: 
+1. [caption]
+2. [caption]  
+3. [caption]`;
+
+    const captions = await groqChat(apiKey, [
+      { role: 'system', content: system },
+      { role: 'user', content: userMsg }
+    ], 'llama-3.1-8b-instant');
+    res.json({ success: true, captions: captions.trim() });
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── POST /proxy/groq/chat ── General chat assistant
+router.post('/groq/chat', async (req, res) => {
+  const apiKey = req.headers['x-groq-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-groq-api-key header' });
+  const { messages } = req.body;
+  if (!messages || !messages.length) return res.status(400).json({ error: 'messages required' });
+
+  try {
+    const system = `You are ARKX AI Assistant, an expert helper for the ARKX Motion Pro platform.
+You help users with:
+- How to write effective prompts for video/image generation
+- Which AI model to choose for different use cases
+- Tips for Motion Control, Upscale, Relight, Style Transfer
+- Troubleshooting generation errors
+- Best practices for AI media creation
+Be concise, friendly, and practical. Use emojis occasionally.`;
+
+    const fullMessages = [{ role: 'system', content: system }, ...messages];
+    const reply = await groqChat(apiKey, fullMessages, 'llama-3.1-8b-instant');
+    res.json({ success: true, reply: reply.trim() });
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── POST /proxy/groq/suggest ── Prompt suggestions by category
+router.post('/groq/suggest', async (req, res) => {
+  const apiKey = req.headers['x-groq-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-groq-api-key header' });
+  const { category, type } = req.body; // category: 'nature','portrait','action','fantasy', etc
+
+  try {
+    const system = `You are a creative prompt generator for AI ${type || 'video'} generation.`;
+    const userMsg = `Generate 5 creative, detailed prompts for the category: "${category || 'cinematic'}".
+Each prompt should be 1-2 sentences, vivid and specific.
+Format as JSON array: ["prompt1","prompt2","prompt3","prompt4","prompt5"]
+Return ONLY the JSON array, nothing else.`;
+
+    const result = await groqChat(apiKey, [
+      { role: 'system', content: system },
+      { role: 'user', content: userMsg }
+    ], 'llama-3.1-8b-instant');
+
+    // Parse JSON dari response
+    const match = result.match(/\[[\s\S]*\]/);
+    const suggestions = match ? JSON.parse(match[0]) : [];
+    res.json({ success: true, suggestions });
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── POST /proxy/groq/video-script ── Generate video script/storyboard
+router.post('/groq/video-script', async (req, res) => {
+  const apiKey = req.headers['x-groq-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-groq-api-key header' });
+  const { topic, duration, style } = req.body;
+  if (!topic) return res.status(400).json({ error: 'topic required' });
+
+  try {
+    const system = `You are an expert AI video director and prompt engineer.`;
+    const userMsg = `Create a video generation prompt for:
+Topic: ${topic}
+Duration: ${duration || '10'} seconds
+Style: ${style || 'cinematic'}
+
+Generate:
+1. Main video prompt (detailed, cinematic)
+2. Negative prompt (what to avoid)
+3. Suggested model (Kling 2.6 Pro / Seedance 1.5 / WAN 2.6 / Hailuo 2.3)
+4. Suggested aspect ratio (16:9 / 9:16 / 1:1)
+
+Format as JSON:
+{
+  "prompt": "...",
+  "negative": "...", 
+  "model": "...",
+  "ratio": "..."
+}
+Return ONLY the JSON.`;
+
+    const result = await groqChat(apiKey, [
+      { role: 'system', content: system },
+      { role: 'user', content: userMsg }
+    ]);
+
+    const match = result.match(/\{[\s\S]*\}/);
+    const script = match ? JSON.parse(match[0]) : { prompt: result };
+    res.json({ success: true, script });
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
+  }
+});
+
 module.exports = router;
