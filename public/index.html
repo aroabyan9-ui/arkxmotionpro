@@ -413,11 +413,11 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
     <div class="fg"><label>Model</label>
       <div class="mgrid" id="vMG">
         <div class="mc sel" data-m="kling-v2-6-pro"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
-        <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">🔊 Audio</div></div>
-        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">No audio</div></div>
+        <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">🔊 Audio · 5/10s</div></div>
+        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">I2V · 5/10/15s</div></div>
         <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance 1.5 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
-        <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">No audio</div></div>
-        <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">No audio</div></div>
+        <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">I2V · 6s fixed</div></div>
+        <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">I2V only · 5/10s</div></div>
       </div>
     </div>
     <div class="fg"><label>Mode</label>
@@ -1690,44 +1690,67 @@ async function genVideo() {
     var neg = document.getElementById('vNeg').value.trim();
 
     if (m === 'kling-v2-6-pro' || m === 'kling-v2-5-pro') {
-      // Kling: supports generate_audio (native audio + lipsync on 2.6)
-      body.duration = dur;
+      // Kling: duration MUST be string "5" or "10" only, aspect_ratio, cfg_scale, generate_audio
+      var klingDur = (dur >= 10) ? '10' : '5';
+      body.duration = klingDur;
       body.aspect_ratio = ratio;
       body.cfg_scale = cfg;
-      body.generate_audio = audio; // ✅ supported
+      body.generate_audio = audio;
       if (neg) body.negative_prompt = neg;
-      if (imgUrl) body.image_url = imgUrl;
+      if (imgUrl) body.image_url = imgUrl; // optional for i2v
 
     } else if (m === 'wan-2-6') {
-      // WAN 2.6: NO audio support
-      body.duration = dur;
-      body.aspect_ratio = ratio;
+      // WAN 2.6: image REQUIRED for i2v, uses 'image' field + 'size' (not aspect_ratio)
+      // duration string "5"/"10"/"15", size like "1920*1080"
+      var wanSizeMap = {
+        'widescreen_16_9': '1920*1080',
+        'social_story_9_16': '1080*1920',
+        'square_1_1': '1440*1440'
+      };
+      var wanDur = dur <= 5 ? '5' : dur <= 10 ? '10' : '15';
+      body.size = wanSizeMap[ratio] || '1920*1080';
+      body.duration = wanDur;
       if (neg) body.negative_prompt = neg;
-      if (imgUrl) body.image_url = imgUrl;
+      if (imgUrl) {
+        body.image = imgUrl; // WAN uses 'image' not 'image_url'
+      } else if (S.vMode === 'i2v') {
+        toast('WAN 2.6 requires an image for Image-to-Video mode', 'err');
+        resetVideoBtn(); return;
+      }
 
     } else if (m === 'seedance-pro') {
-      // Seedance 1.5 Pro: generate_audio supported, dual-branch audio+video (lipsync built-in)
+      // Seedance 1.5 Pro: image field, duration int, aspect_ratio, generate_audio
       body.duration = dur;
       body.aspect_ratio = ratio;
-      body.generate_audio = audio; // ✅ supported
-      if (imgUrl) body.image = imgUrl; // Seedance uses 'image' field
+      body.generate_audio = audio;
+      if (imgUrl) body.image = imgUrl;
 
     } else if (m === 'hailuo-2-3') {
-      // Hailuo 2.3: NO audio, first_frame_image for i2v, duration supported
-      body.duration = dur;
+      // Hailuo 2.3: first_frame_image REQUIRED (i2v only!), duration fixed 6, prompt_optimizer
+      body.duration = 6; // only 6s supported
       body.prompt_optimizer = true;
-      if (imgUrl) body.first_frame_image = imgUrl;
+      if (imgUrl) {
+        body.first_frame_image = imgUrl;
+      } else if (S.vMode === 'i2v') {
+        toast('Hailuo 2.3 requires an image for Image-to-Video mode', 'err');
+        resetVideoBtn(); return;
+      }
 
     } else if (m === 'runway-gen4') {
-      // Runway Gen4: NO audio, image field, ratio as "1280:720" format
+      // Runway Gen4: image REQUIRED (i2v only!), duration int 5/10, ratio "1280:720" format
       var ratioMap = {
         'widescreen_16_9': '1280:720',
         'social_story_9_16': '720:1280',
         'square_1_1': '960:960'
       };
       body.ratio = ratioMap[ratio] || '1280:720';
-      body.duration = (dur === 10) ? 10 : 5;
-      if (imgUrl) body.image = imgUrl;
+      body.duration = (dur >= 10) ? 10 : 5;
+      if (imgUrl) {
+        body.image = imgUrl;
+      } else {
+        toast('Runway Gen4 requires an image (Image-to-Video only)', 'err');
+        resetVideoBtn(); return;
+      }
     }
 
     dbg('REQUEST', 'genVideo: ' + m + ' mode=' + S.vMode + ' prompt=' + prompt.substring(0, 60));
@@ -2468,6 +2491,34 @@ function pickModel(el, group) {
     var audioModels = ['kling-v2-6-pro', 'kling-v2-5-pro', 'seedance-pro'];
     var audioGrp = document.getElementById('vAudioGrp');
     if (audioGrp) audioGrp.style.display = audioModels.indexOf(S.vModel) !== -1 ? 'block' : 'none';
+    // Kling only supports 5s/10s — disable other duration buttons
+    var klingModels = ['kling-v2-6-pro', 'kling-v2-5-pro'];
+    var isKling = klingModels.indexOf(S.vModel) !== -1;
+    var isHailuo = S.vModel === 'hailuo-2-3';
+    var isRunway = S.vModel === 'runway-gen4';
+    document.getElementById('vDurRow').querySelectorAll('.sb2').forEach(function(b) {
+      var d = parseInt(b.dataset.d);
+      var disabled = false;
+      if (isKling && d > 10) disabled = true;
+      if (isHailuo) disabled = (d !== 5); // Hailuo fixed 6s, show 5s as closest
+      if (isRunway && d > 10) disabled = true;
+      b.disabled = disabled;
+      if (disabled && b.classList.contains('sel')) {
+        b.classList.remove('sel');
+        S.vDur = isKling || isRunway ? '10' : '5';
+        var fallback = document.querySelector('#vDurRow .sb2[data-d="' + S.vDur + '"]');
+        if (fallback) fallback.classList.add('sel');
+      }
+    });
+    // Show/hide i2v mode — Runway requires image always
+    var modeRow = document.getElementById('vModeRow');
+    if (isRunway) {
+      // Force i2v for Runway
+      document.querySelectorAll('#vModeRow .mbt').forEach(function(b) { b.classList.remove('on'); });
+      var i2vBtn = document.querySelector('#vModeRow .mbt[data-mode="i2v"]');
+      if (i2vBtn) { i2vBtn.classList.add('on'); S.vMode = 'i2v'; }
+      document.getElementById('vImgGrp').style.display = 'block';
+    }
   }
   if (group === 'm') S.mModel = el.dataset.m;
   if (group === 'i') {
