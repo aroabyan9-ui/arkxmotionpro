@@ -412,12 +412,12 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
   <div class="cb">
     <div class="fg"><label>Model</label>
       <div class="mgrid" id="vMG">
-        <div class="mc sel" data-m="kling-v2-6-pro"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">5s / 10s</div></div>
-        <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">5s / 10s</div></div>
-        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">1080p</div></div>
-        <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance 2</div><div class="mc-b">1080p</div></div>
-        <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">1080p</div></div>
-        <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">Turbo</div></div>
+        <div class="mc sel" data-m="kling-v2-6-pro"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
+        <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">🔊 Audio</div></div>
+        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">No audio</div></div>
+        <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance 1.5 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
+        <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">No audio</div></div>
+        <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">No audio</div></div>
       </div>
     </div>
     <div class="fg"><label>Mode</label>
@@ -460,12 +460,12 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
           <div class="fg"><label>CFG Scale: <span id="cfgLbl">0.5</span></label>
             <input type="range" class="slider" id="cfgSlider" min="0" max="1" step="0.05" value="0.5">
           </div>
-          <div class="fg"><label>Generate Audio</label>
-            <label class="toggle"><input type="checkbox" id="vAudio"><span class="tgl-sw"></span><span class="tgl-lbl">Auto-generate audio</span></label>
-          </div>
         </div>
       </div>
     </details>
+    <div class="fg" id="vAudioGrp">
+      <label class="toggle"><input type="checkbox" id="vAudio"><span class="tgl-sw"></span><span class="tgl-lbl">🔊 Generate Audio (Kling 2.6/2.5 · Seedance 1.5)</span></label>
+    </div>
     <button class="btn-gen" id="vBtn"><i class="fas fa-bolt"></i>Generate Video</button>
   </div>
 </div>
@@ -1639,7 +1639,7 @@ var VIDEO_ENDPOINTS = {
   'kling-v2-6-pro': { post: '/v1/ai/image-to-video/kling-v2-6-pro',           poll: '/v1/ai/image-to-video/kling-v2-6' },
   'kling-v2-5-pro': { post: '/v1/ai/image-to-video/kling-v2-5-pro',           poll: '/v1/ai/image-to-video/kling-v2-5' },
   'wan-2-6':        { post: '/v1/ai/image-to-video/wan-v2-6-1080p',            poll: '/v1/ai/image-to-video/wan-v2-6-1080p' },
-  'seedance-pro':   { post: '/v1/ai/image-to-video/seedance-pro-1080p',        poll: '/v1/ai/image-to-video/seedance-pro-1080p' },
+  'seedance-pro':   { post: '/v1/ai/video/seedance-1-5-pro-1080p',             poll: '/v1/ai/video/seedance-1-5-pro-1080p' },
   'hailuo-2-3':     { post: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p', poll: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p' },
   'runway-gen4':    { post: '/v1/ai/image-to-video/runway-gen4-turbo',         poll: '/v1/ai/image-to-video/runway-gen4-turbo' }
 };
@@ -1682,37 +1682,44 @@ async function genVideo() {
     var neg = document.getElementById('vNeg').value.trim();
 
     if (m === 'kling-v2-6-pro' || m === 'kling-v2-5-pro') {
-      // Kling: image_url (optional for t2v), duration, aspect_ratio, cfg_scale, generate_audio
+      // Kling: supports generate_audio (native audio + lipsync on 2.6)
       body.duration = dur;
       body.aspect_ratio = ratio;
       body.cfg_scale = cfg;
-      body.generate_audio = audio;
+      body.generate_audio = audio; // ✅ supported
       if (neg) body.negative_prompt = neg;
       if (imgUrl) body.image_url = imgUrl;
 
     } else if (m === 'wan-2-6') {
-      // WAN 2.6: image_url (optional), prompt, negative_prompt, duration, aspect_ratio
+      // WAN 2.6: NO audio support
       body.duration = dur;
       body.aspect_ratio = ratio;
       if (neg) body.negative_prompt = neg;
       if (imgUrl) body.image_url = imgUrl;
 
     } else if (m === 'seedance-pro') {
-      // Seedance Pro: image (not image_url!), prompt, duration, aspect_ratio
+      // Seedance 1.5 Pro: generate_audio supported, dual-branch audio+video (lipsync built-in)
       body.duration = dur;
       body.aspect_ratio = ratio;
+      body.generate_audio = audio; // ✅ supported
       if (imgUrl) body.image = imgUrl; // Seedance uses 'image' field
 
     } else if (m === 'hailuo-2-3') {
-      // Hailuo: first_frame_image (not image_url!), prompt, prompt_optimizer
+      // Hailuo 2.3: NO audio, first_frame_image for i2v, duration supported
+      body.duration = dur;
       body.prompt_optimizer = true;
-      if (imgUrl) body.first_frame_image = imgUrl; // Hailuo uses 'first_frame_image'
+      if (imgUrl) body.first_frame_image = imgUrl;
 
     } else if (m === 'runway-gen4') {
-      // Runway Gen4: image_url (optional), duration, ratio
-      body.duration = dur;
-      body.ratio = ratio;
-      if (imgUrl) body.image_url = imgUrl;
+      // Runway Gen4: NO audio, image field, ratio as "1280:720" format
+      var ratioMap = {
+        'widescreen_16_9': '1280:720',
+        'social_story_9_16': '720:1280',
+        'square_1_1': '960:960'
+      };
+      body.ratio = ratioMap[ratio] || '1280:720';
+      body.duration = (dur === 10) ? 10 : 5;
+      if (imgUrl) body.image = imgUrl;
     }
 
     dbg('REQUEST', 'genVideo: ' + m + ' mode=' + S.vMode + ' prompt=' + prompt.substring(0, 60));
@@ -2438,7 +2445,13 @@ function pickModel(el, group) {
   var container = document.getElementById(group === 'v' ? 'vMG' : group === 'i' ? 'iMG' : '');
   if (container) container.querySelectorAll('.mc').forEach(function(m) { m.classList.remove('sel'); });
   el.classList.add('sel');
-  if (group === 'v') S.vModel = el.dataset.m;
+  if (group === 'v') {
+    S.vModel = el.dataset.m;
+    // Show/hide audio toggle — only Kling 2.6, Kling 2.5, Seedance 1.5 support audio
+    var audioModels = ['kling-v2-6-pro', 'kling-v2-5-pro', 'seedance-pro'];
+    var audioGrp = document.getElementById('vAudioGrp');
+    if (audioGrp) audioGrp.style.display = audioModels.indexOf(S.vModel) !== -1 ? 'block' : 'none';
+  }
   if (group === 'i') {
     S.iModel = el.dataset.m;
     // Show/hide OpenAI notice
