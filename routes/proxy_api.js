@@ -355,4 +355,96 @@ Return ONLY the JSON.`;
   }
 });
 
+// ══════════════════════════════════════════════
+// HUGGINGFACE — Free Image Generation
+// ══════════════════════════════════════════════
+const HF_BASE = 'https://api-inference.huggingface.co/models';
+
+// ── POST /proxy/hf/generate ── Generate image via HuggingFace
+router.post('/hf/generate', async (req, res) => {
+  const apiKey = req.headers['x-hf-api-key'];
+  if (!apiKey) return res.status(401).json({ error: 'Missing x-hf-api-key header' });
+
+  const { prompt, model, negative_prompt, width, height } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+
+  // Default model: FLUX.1-schnell (fastest free model)
+  const hfModel = model || 'black-forest-labs/FLUX.1-schnell';
+  const url = `${HF_BASE}/${hfModel}`;
+
+  console.log(`[HF] POST ${url}`);
+  try {
+    const payload = { inputs: prompt };
+    if (negative_prompt) payload.negative_prompt = negative_prompt;
+    if (width && height) payload.parameters = { width, height };
+
+    const resp = await axios.post(url, payload, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'image/png,image/jpeg,image/*'
+      },
+      responseType: 'arraybuffer',
+      timeout: 120000, // 2 menit
+      validateStatus: () => true
+    });
+
+    console.log(`[HF] Status: ${resp.status}, Content-Type: ${resp.headers['content-type']}`);
+
+    if (resp.status === 503) {
+      // Model loading — return estimated wait time
+      let errMsg = 'Model loading, please retry in 20s';
+      try {
+        const errData = JSON.parse(Buffer.from(resp.data).toString());
+        errMsg = errData.error || errMsg;
+      } catch(e) {}
+      return res.status(503).json({ error: errMsg, loading: true });
+    }
+
+    if (resp.status !== 200) {
+      let errMsg = 'HuggingFace error ' + resp.status;
+      try {
+        const errData = JSON.parse(Buffer.from(resp.data).toString());
+        errMsg = errData.error || errMsg;
+      } catch(e) {}
+      return res.status(resp.status).json({ error: errMsg });
+    }
+
+    // Convert image buffer to base64 data URL
+    const contentType = resp.headers['content-type'] || 'image/png';
+    const base64 = Buffer.from(resp.data).toString('base64');
+    const dataUrl = `data:${contentType};base64,${base64}`;
+
+    // Save to uploads folder and return URL
+    const ext = contentType.includes('jpeg') ? '.jpg' : '.png';
+    const filename = uuidv4() + ext;
+    const filepath = path.join('./uploads', filename);
+    await fs.writeFile(filepath, resp.data);
+
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const baseUrl = process.env.PUBLIC_URL || `${proto}://${host}`;
+    const imageUrl = `${baseUrl}/uploads/${filename}`;
+
+    res.json({ success: true, url: imageUrl, dataUrl });
+  } catch (err) {
+    console.error('[HF] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /proxy/hf/models ── List available free models
+router.get('/hf/models', (req, res) => {
+  res.json({
+    models: [
+      { id: 'black-forest-labs/FLUX.1-schnell', name: 'FLUX.1 Schnell', desc: 'Fastest, free', icon: '⚡' },
+      { id: 'black-forest-labs/FLUX.1-dev',     name: 'FLUX.1 Dev',     desc: 'High quality', icon: '🔥' },
+      { id: 'stabilityai/stable-diffusion-xl-base-1.0', name: 'SDXL 1.0', desc: 'Classic SD', icon: '🎨' },
+      { id: 'runwayml/stable-diffusion-v1-5',   name: 'SD 1.5',         desc: 'Fast & light', icon: '🚀' },
+      { id: 'Lykon/dreamshaper-8',               name: 'DreamShaper 8',  desc: 'Artistic',    icon: '✨' },
+      { id: 'SG161222/Realistic_Vision_V6.0_B1_noVAE', name: 'Realistic Vision', desc: 'Photorealistic', icon: '📸' }
+    ]
+  });
+});
+
 module.exports = router;
