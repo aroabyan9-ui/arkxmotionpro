@@ -122,9 +122,10 @@ router.post('/upload-video', upload.single('file'), async (req, res) => {
 
     await fs.writeFile(filepath, req.file.buffer);
 
-    // Return URL yang bisa diakses dari luar
-    // Kalau ada PUBLIC_URL di env, pakai itu. Kalau tidak, pakai localhost
-    const baseUrl = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
+    // Build public URL — pakai host dari request (paling reliable di Render/Railway)
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const baseUrl = process.env.PUBLIC_URL || `${proto}://${host}`;
     const url = `${baseUrl}/uploads/${filename}`;
 
     console.log(`[Proxy] Video saved: ${url}`);
