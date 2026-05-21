@@ -25,32 +25,78 @@ const MAGNIFIC_BASE = 'https://api.magnific.com';
 const IMGBB_BASE    = 'https://api.imgbb.com';
 
 // ── Helper: forward request ke Magnific ──
+// Tries api.magnific.com first, falls back to api.freepik.com if 404
 async function forwardToMagnific(method, path_, body, apiKey, res) {
-  try {
-    const fullUrl = MAGNIFIC_BASE + path_;
-    console.log(`[Proxy] ${method} → ${fullUrl}`);
-    const config = {
-      method,
-      url: fullUrl,
-      headers: {
-        'x-magnific-api-key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      timeout: 60000, // increased to 60s
-      validateStatus: () => true
-    };
-    if (body && method !== 'GET') config.data = body;
+  const bases = [
+    { url: 'https://api.magnific.com', keyHeader: 'x-magnific-api-key' },
+    { url: 'https://api.freepik.com',  keyHeader: 'x-freepik-api-key'  }
+  ];
 
-    const resp = await axios(config);
-    console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
-    res.status(resp.status).json(resp.data);
-  } catch (err) {
-    const msg = err.response?.data?.message || err.message || 'Proxy error';
-    console.error('[Proxy] Error:', method, path_, msg);
-    res.status(500).json({ error: msg, proxy: true });
+  let lastStatus = 500;
+  let lastData = {};
+
+  for (const base of bases) {
+    try {
+      const fullUrl = base.url + path_;
+      console.log(`[Proxy] ${method} → ${fullUrl}`);
+      const config = {
+        method,
+        url: fullUrl,
+        headers: {
+          [base.keyHeader]: apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 60000,
+        validateStatus: () => true
+      };
+      if (body && method !== 'GET') config.data = body;
+
+      const resp = await axios(config);
+      console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status} (${base.url})`);
+
+      // If 404 on GET (task not found), try next base URL
+      if (resp.status === 404 && method === 'GET') {
+        lastStatus = resp.status;
+        lastData = resp.data;
+        console.log(`[Proxy] 404 on ${base.url}, trying next...`);
+        continue;
+      }
+
+      return res.status(resp.status).json(resp.data);
+    } catch (err) {
+      const msg = err.message || 'Proxy error';
+      console.error('[Proxy] Error:', method, path_, msg);
+      lastData = { error: msg, proxy: true };
+    }
   }
+
+  // All bases failed
+  res.status(lastStatus || 500).json(lastData);
 }
+
+// ── GET /proxy/test-poll ── Test polling langsung ke Magnific
+router.get('/test-poll', async (req, res) => {
+  const apiKey = req.headers['x-magnific-api-key'];
+  const taskId = req.query.taskId;
+  const endpoint = req.query.endpoint || '/v1/ai/mystic';
+  if (!apiKey || !taskId) return res.status(400).json({ error: 'Need x-magnific-api-key header and taskId query param' });
+
+  const results = {};
+  // Try both base URLs
+  for (const base of ['https://api.magnific.com', 'https://api.freepik.com']) {
+    const headers = base.includes('freepik')
+      ? { 'x-freepik-api-key': apiKey }
+      : { 'x-magnific-api-key': apiKey };
+    try {
+      const r = await axios.get(`${base}${endpoint}/${taskId}`, { headers, timeout: 10000, validateStatus: () => true });
+      results[base] = { status: r.status, data: r.data };
+    } catch(e) {
+      results[base] = { error: e.message };
+    }
+  }
+  res.json(results);
+});
 
 // ── POST /proxy/magnific/* ── forward POST ke Magnific
 router.post('/magnific/*', async (req, res) => {
