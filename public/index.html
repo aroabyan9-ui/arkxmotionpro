@@ -419,6 +419,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="na" data-pg="debug"><i class="fas fa-terminal"></i>Debug Console</div>
     <div class="sep"></div>
     <div class="na" data-pg="assistant"><i class="fas fa-robot" style="color:#f97316"></i>AI Assistant</div>
+    <div class="na" data-pg="batch"><i class="fas fa-layer-group" style="color:var(--c)"></i>Batch Queue<span class="na-badge" id="batchBadge" style="display:none;background:var(--c);color:#000">0</span></div>
     <div class="sep" id="adminSep" style="display:none"></div>
     <div class="na" id="adminNav" data-pg="admin" style="display:none"><i class="fas fa-users-cog"></i>Admin Panel<span class="na-badge" id="pendingBadge" style="display:none">0</span></div>
   </div>
@@ -1117,6 +1118,136 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 </div>
 </div>
 
+<!-- ══ PAGE: BATCH QUEUE ══ -->
+<div class="pg" id="pg-batch">
+<div class="g2">
+<!-- LEFT: Add Job -->
+<div>
+<div class="card">
+  <div class="ch"><i class="fas fa-plus-circle" style="color:var(--c)"></i>Add Job to Queue</div>
+  <div class="cb">
+    <div class="fg"><label>Type</label>
+      <div class="mrow" id="bqTypeRow">
+        <button class="mbt on" data-btype="video"><i class="fas fa-film"></i>Video</button>
+        <button class="mbt" data-btype="image"><i class="fas fa-image"></i>Image</button>
+        <button class="mbt" data-btype="upscale"><i class="fas fa-expand-arrows-alt"></i>Upscale</button>
+      </div>
+    </div>
+    <!-- Video fields -->
+    <div id="bqVideoFields">
+      <div class="fg"><label>Model</label>
+        <select class="sel" id="bqVModel">
+          <option value="kling-v2-6-pro">Kling 2.6 Pro 🔊</option>
+          <option value="kling-v2-5-pro">Kling 2.5 Pro 🔊</option>
+          <option value="wan-2-6">WAN 2.6</option>
+          <option value="seedance-pro">Seedance 1.5 Pro 🔊</option>
+          <option value="hailuo-2-3">Hailuo 2.3</option>
+        </select>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Duration</label>
+          <select class="sel" id="bqVDur">
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+          </select>
+        </div>
+        <div class="fg"><label>Ratio</label>
+          <select class="sel" id="bqVRatio">
+            <option value="widescreen_16_9">16:9</option>
+            <option value="social_story_9_16">9:16</option>
+            <option value="square_1_1">1:1</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- Image fields -->
+    <div id="bqImageFields" style="display:none">
+      <div class="fg"><label>Model</label>
+        <select class="sel" id="bqIModel">
+          <option value="mystic">Mystic ✨</option>
+          <option value="flux-kontext-pro">Flux Kontext Pro 🔥</option>
+          <option value="flux-2-pro">Flux 2 Pro ⚡</option>
+          <option value="flux-2-turbo">Flux 2 Turbo 🚀</option>
+          <option value="seedream-4-5">Seedream 4.5 🌱</option>
+        </select>
+      </div>
+      <div class="fg"><label>Ratio</label>
+        <select class="sel" id="bqIRatio">
+          <option value="square_1_1">1:1 Square</option>
+          <option value="widescreen_16_9">16:9</option>
+          <option value="social_story_9_16">9:16</option>
+        </select>
+      </div>
+    </div>
+    <!-- Upscale fields -->
+    <div id="bqUpscaleFields" style="display:none">
+      <div class="fg"><label>Scale</label>
+        <select class="sel" id="bqUScale">
+          <option value="2x">2x</option>
+          <option value="4x">4x</option>
+          <option value="8x">8x</option>
+        </select>
+      </div>
+      <div class="fg"><label>Image URL</label>
+        <input type="text" class="inp" id="bqUImgUrl" placeholder="https://... (public image URL)">
+      </div>
+    </div>
+    <!-- Common fields -->
+    <div class="fg"><label>Prompt <span id="bqPromptReq" style="color:var(--r)">*</span></label>
+      <div class="enh-wrap">
+        <textarea class="ta" id="bqPrompt" rows="3" placeholder="Describe what you want to generate..."></textarea>
+        <button class="enh-btn" onclick="groqEnhancePrompt(document.getElementById('bqPrompt').value,'video','bqPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
+      </div>
+    </div>
+    <div class="fg"><label>Label <span style="color:var(--t3);font-size:10px">(optional)</span></label>
+      <input type="text" class="inp" id="bqLabel" placeholder="e.g. Job 1 - Sunset video">
+    </div>
+    <button class="btn-gen" id="bqAddBtn" style="background:linear-gradient(135deg,var(--c),#0891b2)"><i class="fas fa-plus"></i>Add to Queue</button>
+  </div>
+</div>
+<!-- Bulk Add -->
+<div class="card">
+  <div class="ch"><i class="fas fa-list" style="color:var(--w)"></i>Bulk Add Prompts</div>
+  <div class="cb">
+    <div class="info-b"><i class="fas fa-circle-info"></i>Paste multiple prompts, satu per baris. Semua pakai settings yang sama di atas.</div>
+    <div class="fg">
+      <textarea class="ta" id="bqBulkTa" rows="5" placeholder="Prompt 1&#10;Prompt 2&#10;Prompt 3&#10;..."></textarea>
+    </div>
+    <button class="btn-gen btn-c" id="bqBulkAddBtn"><i class="fas fa-layer-group"></i>Add All as Jobs</button>
+  </div>
+</div>
+</div>
+<!-- RIGHT: Queue -->
+<div>
+<div class="card">
+  <div class="ch"><i class="fas fa-layer-group" style="color:var(--c)"></i>Queue
+    <span id="bqStats" style="font-size:11px;margin-left:8px;color:var(--t3)"></span>
+    <div class="ch-r">
+      <button class="bsm" id="bqStartBtn" style="border-color:rgba(0,255,136,.4);color:var(--g)"><i class="fas fa-play"></i>Start All</button>
+      <button class="bsm" id="bqPauseBtn" style="display:none"><i class="fas fa-pause"></i>Pause</button>
+      <button class="bsm btn-danger" id="bqClearBtn"><i class="fas fa-trash"></i>Clear Done</button>
+    </div>
+  </div>
+  <div class="cb" style="padding:10px">
+    <!-- Parallel slots indicator -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
+      <span style="font-size:11px;color:var(--t3)">Parallel:</span>
+      <div class="srow">
+        <button class="sb2 sel" data-slots="1" id="bqSlot1">1</button>
+        <button class="sb2" data-slots="2" id="bqSlot2">2</button>
+        <button class="sb2" data-slots="3" id="bqSlot3">3</button>
+      </div>
+      <span style="font-size:10px;color:var(--t3);margin-left:4px">jobs at once</span>
+    </div>
+    <div id="bqJobList" style="display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 280px);overflow-y:auto">
+      <div class="empty-s">No jobs in queue. Add some above!</div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
   </div><!-- /pages -->
 </main>
 </div><!-- /app -->
@@ -1370,7 +1501,8 @@ function goPage(page) {
     upscale: 'Upscale Ultra', relight: 'AI Relight', style: 'Style Transfer',
     keys: 'API Keys', proxy: 'Proxy Manager', history: 'History',
     stats: 'Statistics', debug: 'Debug Console', admin: 'Admin Panel',
-    assistant: 'AI Assistant'
+    assistant: 'AI Assistant',
+    batch: 'Batch Queue'
   };
   var tb = document.getElementById('tbTitle');
   if (tb) tb.textContent = titles[page] || page;
@@ -1897,14 +2029,16 @@ async function mFetch(method, path, body, apiKey) {
   if (body && method !== 'GET') opts.body = JSON.stringify(body);
   dbg('REQUEST', method + ' ' + path);
   var res = await fetch(url, opts);
+  var respData = {};
+  try { respData = await res.json(); } catch(e2) {}
   if (!res.ok) {
-    var errData = {};
-    try { errData = await res.json(); } catch(e2) {}
-    var e = new Error(errData.message || errData.error || 'HTTP ' + res.status);
+    // Log full response for debugging
+    dbg('ERROR', 'HTTP ' + res.status + ' | ' + JSON.stringify(respData).substring(0, 200));
+    var e = new Error(respData.message || respData.error || 'HTTP ' + res.status);
     e.status = res.status;
     throw e;
   }
-  return res.json();
+  return respData;
 }
 
 async function mFetchWithRotation(method, path, body) {
@@ -1988,9 +2122,17 @@ async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFai
         setTimeout(poll, intervalMs);
       }
     } catch(e) {
-      dbg('ERROR', 'Poll error: ' + e.message);
-      if (attempt < maxAttempts) { setTimeout(poll, intervalMs * 2); }
-      else { onFail('Poll error: ' + e.message); }
+      dbg('ERROR', 'Poll error: ' + e.message + ' (attempt ' + attempt + ')');
+      // 404 Task not found = task belum ready, retry dengan delay lebih lama
+      if (e.status === 404 || (e.message && e.message.toLowerCase().indexOf('not found') !== -1)) {
+        dbg('INFO', 'Task not ready yet, retrying in ' + (intervalMs * 2 / 1000) + 's...');
+        if (attempt < maxAttempts) { setTimeout(poll, intervalMs * 2); }
+        else { onFail('Task not found after ' + maxAttempts + ' attempts'); }
+      } else if (attempt < maxAttempts) {
+        setTimeout(poll, intervalMs * 2);
+      } else {
+        onFail('Poll error: ' + e.message);
+      }
     }
   }
   setProgress(5, 'Task created, waiting...', 'Task: ' + taskId);
@@ -3206,8 +3348,58 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   dbg('INFO', 'ARKX Motion Pro initialized. Backend: ' + PROXY);
+
+  // ── Batch Queue page
+  document.getElementById('bqTypeRow').addEventListener('click', function(e) {
+    var btn = e.target.closest('.mbt');
+    if (!btn) return;
+    document.querySelectorAll('#bqTypeRow .mbt').forEach(function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    var t = btn.dataset.btype;
+    document.getElementById('bqVideoFields').style.display = t === 'video' ? 'block' : 'none';
+    document.getElementById('bqImageFields').style.display = t === 'image' ? 'block' : 'none';
+    document.getElementById('bqUpscaleFields').style.display = t === 'upscale' ? 'block' : 'none';
+    document.getElementById('bqPromptReq').style.display = t === 'upscale' ? 'none' : 'inline';
+  });
+  document.getElementById('bqAddBtn').addEventListener('click', bqAddJob);
+  document.getElementById('bqBulkAddBtn').addEventListener('click', bqBulkAdd);
+  document.getElementById('bqStartBtn').addEventListener('click', bqStartAll);
+  document.getElementById('bqPauseBtn').addEventListener('click', bqPause);
+  document.getElementById('bqClearBtn').addEventListener('click', bqClearDone);
+  document.querySelectorAll('[data-slots]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-slots]').forEach(function(b) { b.classList.remove('sel'); });
+      this.classList.add('sel');
+      BQ.parallelSlots = parseInt(this.dataset.slots);
+    });
+  });
 });
 </script>
+<style>
+/* ═══ BATCH QUEUE JOB CARDS ═══ */
+.bq-job{background:rgba(5,5,15,.7);border:1px solid var(--border2);border-radius:12px;padding:12px;transition:all .2s;position:relative;overflow:hidden}
+.bq-job::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.bq-job.pending::before{background:var(--t3)}
+.bq-job.running::before{background:var(--c);box-shadow:0 0 8px var(--cglow);animation:glow 1.5s infinite}
+.bq-job.done::before{background:var(--g);box-shadow:0 0 8px var(--g)}
+.bq-job.failed::before{background:var(--r)}
+.bq-job-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.bq-job-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.bq-job-info{flex:1;min-width:0}
+.bq-job-label{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bq-job-prompt{font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.bq-job-meta{font-size:10px;color:var(--t3);margin-top:2px}
+.bq-job-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.bq-job-status.pending{background:rgba(255,255,255,.06);color:var(--t3)}
+.bq-job-status.running{background:rgba(0,245,255,.12);color:var(--c);border:1px solid rgba(0,245,255,.3)}
+.bq-job-status.done{background:rgba(0,255,136,.12);color:var(--g);border:1px solid rgba(0,255,136,.3)}
+.bq-job-status.failed{background:rgba(239,68,68,.12);color:var(--r);border:1px solid rgba(239,68,68,.3)}
+.bq-job-prog{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px}
+.bq-job-prog-b{height:100%;background:linear-gradient(90deg,var(--p),var(--c));border-radius:3px;transition:width .5s ease;width:0%}
+.bq-job-result{margin-top:8px;display:none}
+.bq-job-result img,.bq-job-result video{width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border2)}
+.bq-job-acts{display:flex;gap:4px;margin-top:6px;justify-content:flex-end}
+</style>
 <style>
 /* ═══ CHAT BUBBLES ═══ */
 .chat-msg{display:flex;margin-bottom:2px}
@@ -3221,5 +3413,357 @@ document.addEventListener('DOMContentLoaded', function() {
 .enh-btn{position:absolute;right:8px;bottom:8px;background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(0,245,255,.2));border:1px solid rgba(168,85,247,.4);border-radius:8px;color:var(--p2);cursor:pointer;font-size:11px;font-weight:700;padding:4px 9px;display:flex;align-items:center;gap:4px;transition:all .2s;font-family:inherit;z-index:1}
 .enh-btn:hover{background:linear-gradient(135deg,rgba(168,85,247,.5),rgba(0,245,255,.3));box-shadow:0 0 15px rgba(168,85,247,.3)}
 </style>
+
+<script>
+// ══════════════════════════════════════════════
+// BATCH QUEUE ENGINE
+// ══════════════════════════════════════════════
+var BQ = {
+  jobs: [],
+  running: false,
+  paused: false,
+  parallelSlots: 1,
+  activeCount: 0
+};
+
+function bqGetCurrentType() {
+  var btn = document.querySelector('#bqTypeRow .mbt.on');
+  return btn ? btn.dataset.btype : 'video';
+}
+
+function bqAddJob() {
+  var type = bqGetCurrentType();
+  var prompt = document.getElementById('bqPrompt').value.trim();
+  var label = document.getElementById('bqLabel').value.trim();
+
+  if (type !== 'upscale' && !prompt) { toast('Enter a prompt', 'err'); return; }
+
+  var job = {
+    id: Date.now().toString() + Math.random().toString(36).substr(2,4),
+    type: type,
+    prompt: prompt,
+    label: label || (type + ' #' + (BQ.jobs.length + 1)),
+    status: 'pending',
+    progress: 0,
+    result: null,
+    error: null,
+    createdAt: Date.now()
+  };
+
+  if (type === 'video') {
+    job.model = document.getElementById('bqVModel').value;
+    job.duration = document.getElementById('bqVDur').value;
+    job.ratio = document.getElementById('bqVRatio').value;
+  } else if (type === 'image') {
+    job.model = document.getElementById('bqIModel').value;
+    job.ratio = document.getElementById('bqIRatio').value;
+  } else if (type === 'upscale') {
+    job.scale = document.getElementById('bqUScale').value;
+    job.imageUrl = document.getElementById('bqUImgUrl').value.trim();
+    if (!job.imageUrl) { toast('Enter image URL for upscale', 'err'); return; }
+  }
+
+  BQ.jobs.push(job);
+  document.getElementById('bqPrompt').value = '';
+  document.getElementById('bqLabel').value = '';
+  bqRender();
+  toast('Job added: ' + job.label, 'ok');
+}
+
+function bqBulkAdd() {
+  var ta = document.getElementById('bqBulkTa');
+  var lines = ta.value.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l; });
+  if (!lines.length) { toast('No prompts found', 'warn'); return; }
+  var type = bqGetCurrentType();
+  lines.forEach(function(prompt, i) {
+    var job = {
+      id: Date.now().toString() + i + Math.random().toString(36).substr(2,4),
+      type: type, prompt: prompt,
+      label: type + ' #' + (BQ.jobs.length + 1),
+      status: 'pending', progress: 0, result: null, error: null, createdAt: Date.now()
+    };
+    if (type === 'video') {
+      job.model = document.getElementById('bqVModel').value;
+      job.duration = document.getElementById('bqVDur').value;
+      job.ratio = document.getElementById('bqVRatio').value;
+    } else if (type === 'image') {
+      job.model = document.getElementById('bqIModel').value;
+      job.ratio = document.getElementById('bqIRatio').value;
+    }
+    BQ.jobs.push(job);
+  });
+  ta.value = '';
+  bqRender();
+  toast('Added ' + lines.length + ' jobs to queue', 'ok');
+}
+
+function bqRender() {
+  var el = document.getElementById('bqJobList');
+  if (!el) return;
+  var pending = BQ.jobs.filter(function(j) { return j.status === 'pending'; }).length;
+  var running = BQ.jobs.filter(function(j) { return j.status === 'running'; }).length;
+  var done = BQ.jobs.filter(function(j) { return j.status === 'done'; }).length;
+  var failed = BQ.jobs.filter(function(j) { return j.status === 'failed'; }).length;
+  var stats = document.getElementById('bqStats');
+  if (stats) stats.innerHTML =
+    '<span style="color:var(--t3)">⏳' + pending + '</span> ' +
+    '<span style="color:var(--c)">▶' + running + '</span> ' +
+    '<span style="color:var(--g)">✓' + done + '</span> ' +
+    (failed ? '<span style="color:var(--r)">✗' + failed + '</span>' : '');
+  // Badge
+  var badge = document.getElementById('batchBadge');
+  if (badge) {
+    var active = pending + running;
+    badge.textContent = active;
+    badge.style.display = active > 0 ? 'block' : 'none';
+  }
+  if (!BQ.jobs.length) {
+    el.innerHTML = '<div class="empty-s">No jobs in queue. Add some above!</div>';
+    return;
+  }
+  el.innerHTML = BQ.jobs.map(function(job) {
+    var icon = job.type === 'video' ? '🎬' : job.type === 'image' ? '🖼️' : '🔍';
+    var meta = job.type === 'video' ? (job.model + ' · ' + job.duration + 's · ' + job.ratio)
+      : job.type === 'image' ? (job.model + ' · ' + job.ratio)
+      : ('Upscale ' + job.scale);
+    return '<div class="bq-job ' + job.status + '" id="bqj-' + job.id + '">' +
+      '<div class="bq-job-top">' +
+        '<div class="bq-job-icon">' + icon + '</div>' +
+        '<div class="bq-job-info">' +
+          '<div class="bq-job-label">' + escHtml(job.label) + '</div>' +
+          '<div class="bq-job-prompt">' + escHtml(job.prompt || job.imageUrl || '') + '</div>' +
+          '<div class="bq-job-meta">' + escHtml(meta) + '</div>' +
+        '</div>' +
+        '<span class="bq-job-status ' + job.status + '">' +
+          (job.status === 'pending' ? '⏳ Pending' :
+           job.status === 'running' ? '<i class="fas fa-spinner fa-spin"></i> Running' :
+           job.status === 'done' ? '✓ Done' : '✗ Failed') +
+        '</span>' +
+      '</div>' +
+      '<div class="bq-job-prog"><div class="bq-job-prog-b" style="width:' + job.progress + '%"></div></div>' +
+      (job.status === 'running' ? '<div style="font-size:10px;color:var(--c);margin-top:4px" id="bqjt-' + job.id + '">Processing...</div>' : '') +
+      (job.error ? '<div style="font-size:11px;color:var(--r);margin-top:4px">' + escHtml(job.error) + '</div>' : '') +
+      (job.result ? '<div class="bq-job-result" style="display:block">' +
+        (job.type === 'video' ? '<video src="' + job.result + '" controls style="width:100%;max-height:120px;border-radius:8px"></video>' :
+         '<img src="' + job.result + '" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px">') +
+        '<div class="bq-job-acts">' +
+          '<button class="bsm" onclick="dlBqResult(\'' + job.id + '\')"><i class="fas fa-download"></i>DL</button>' +
+          '<button class="bsm" onclick="navigator.clipboard.writeText(\'' + job.result + '\');toast(\'URL copied\',\'ok\')"><i class="fas fa-copy"></i>URL</button>' +
+        '</div>' +
+      '</div>' : '') +
+      (job.status === 'pending' ? '<div class="bq-job-acts"><button class="bsm btn-danger" onclick="bqRemoveJob(\'' + job.id + '\')"><i class="fas fa-trash"></i>Remove</button></div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function bqRemoveJob(id) {
+  BQ.jobs = BQ.jobs.filter(function(j) { return j.id !== id; });
+  bqRender();
+}
+
+function bqClearDone() {
+  BQ.jobs = BQ.jobs.filter(function(j) { return j.status === 'pending' || j.status === 'running'; });
+  bqRender();
+  toast('Cleared completed jobs', 'ok');
+}
+
+function dlBqResult(id) {
+  var job = BQ.jobs.find(function(j) { return j.id === id; });
+  if (!job || !job.result) return;
+  var a = document.createElement('a');
+  a.href = job.result;
+  a.download = 'arkx-batch-' + id + (job.type === 'video' ? '.mp4' : '.jpg');
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function bqPause() {
+  BQ.paused = !BQ.paused;
+  var btn = document.getElementById('bqPauseBtn');
+  if (btn) btn.innerHTML = BQ.paused ? '<i class="fas fa-play"></i>Resume' : '<i class="fas fa-pause"></i>Pause';
+  toast(BQ.paused ? 'Queue paused' : 'Queue resumed', 'ok');
+}
+
+async function bqStartAll() {
+  if (BQ.running) { toast('Queue already running', 'warn'); return; }
+  var pending = BQ.jobs.filter(function(j) { return j.status === 'pending'; });
+  if (!pending.length) { toast('No pending jobs', 'warn'); return; }
+  var key = getBestKey();
+  if (!key) { toast('No active API keys', 'err'); return; }
+  BQ.running = true;
+  BQ.paused = false;
+  document.getElementById('bqStartBtn').style.display = 'none';
+  document.getElementById('bqPauseBtn').style.display = 'inline-flex';
+  toast('Queue started! ' + pending.length + ' jobs', 'ok');
+  await bqProcessNext();
+}
+
+async function bqProcessNext() {
+  if (!BQ.running) return;
+  if (BQ.paused) { setTimeout(bqProcessNext, 2000); return; }
+
+  var pending = BQ.jobs.filter(function(j) { return j.status === 'pending'; });
+  var running = BQ.jobs.filter(function(j) { return j.status === 'running'; });
+
+  if (!pending.length && !running.length) {
+    // All done
+    BQ.running = false;
+    document.getElementById('bqStartBtn').style.display = 'inline-flex';
+    document.getElementById('bqPauseBtn').style.display = 'none';
+    toast('All jobs completed!', 'ok');
+    bqRender();
+    return;
+  }
+
+  // Start jobs up to parallelSlots
+  var slotsAvailable = BQ.parallelSlots - running.length;
+  for (var i = 0; i < Math.min(slotsAvailable, pending.length); i++) {
+    bqRunJob(pending[i]);
+  }
+
+  // Check again after 3s
+  setTimeout(bqProcessNext, 3000);
+}
+
+async function bqRunJob(job) {
+  job.status = 'running';
+  job.progress = 5;
+  bqRender();
+
+  var key = getBestKey();
+  if (!key) {
+    job.status = 'failed';
+    job.error = 'No active API keys';
+    bqRender();
+    return;
+  }
+
+  try {
+    var taskId, pollPath;
+
+    if (job.type === 'video') {
+      var ep = VIDEO_ENDPOINTS[job.model];
+      if (!ep) throw new Error('Unknown model: ' + job.model);
+      var body = { prompt: job.prompt };
+      var klingModels = ['kling-v2-6-pro', 'kling-v2-5-pro'];
+      if (klingModels.indexOf(job.model) !== -1) {
+        body.duration = String(parseInt(job.duration) > 10 ? '10' : job.duration);
+        body.aspect_ratio = job.ratio;
+        body.cfg_scale = 0.5;
+      } else if (job.model === 'wan-2-6') {
+        var wanSizeMap = {'widescreen_16_9':'1920*1080','social_story_9_16':'1080*1920','square_1_1':'1440*1440'};
+        body.size = wanSizeMap[job.ratio] || '1920*1080';
+        body.duration = String(parseInt(job.duration) <= 5 ? '5' : parseInt(job.duration) <= 10 ? '10' : '15');
+      } else if (job.model === 'seedance-pro') {
+        body.duration = parseInt(job.duration);
+        body.aspect_ratio = job.ratio;
+      } else if (job.model === 'hailuo-2-3') {
+        body.duration = 6;
+        body.prompt_optimizer = true;
+      }
+      var resp = await mFetchWithRotation('POST', ep.post, body);
+      taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
+      pollPath = ep.poll;
+
+    } else if (job.type === 'image') {
+      var iep = IMAGE_ENDPOINTS[job.model];
+      if (!iep) throw new Error('Unknown model: ' + job.model);
+      var ibody = { prompt: job.prompt };
+      if (job.model === 'mystic') {
+        ibody.resolution = '2k';
+        ibody.aspect_ratio = job.ratio;
+        ibody.model = 'realism';
+      } else if (job.model === 'flux-kontext-pro') {
+        ibody.aspect_ratio = job.ratio;
+        ibody.guidance = 3;
+        ibody.steps = 50;
+      } else if (job.model === 'flux-2-pro') {
+        var rts = {'square_1_1':[1024,1024],'widescreen_16_9':[1440,810],'social_story_9_16':[810,1440]};
+        var d = rts[job.ratio] || [1024,1024];
+        ibody.width = d[0]; ibody.height = d[1];
+      } else if (job.model === 'flux-2-turbo') {
+        var rts2 = {'square_1_1':[1024,1024],'widescreen_16_9':[1440,810],'social_story_9_16':[810,1440]};
+        var d2 = rts2[job.ratio] || [1024,1024];
+        ibody.image_size = {width:d2[0],height:d2[1]};
+        ibody.guidance_scale = 2.5;
+      } else if (job.model === 'seedream-4-5') {
+        ibody.aspect_ratio = job.ratio;
+      }
+      var iresp = await mFetchWithRotation('POST', iep.post, ibody);
+      taskId = (iresp && iresp.data && iresp.data.task_id) ? iresp.data.task_id : (iresp && iresp.task_id ? iresp.task_id : null);
+      pollPath = iep.poll;
+
+    } else if (job.type === 'upscale') {
+      var ubody = { image: job.imageUrl, scale_factor: job.scale || '2x', engine: 'default', optimized_for: 'standard', creativity: 50, hdr: 50, resemblance: 50 };
+      var uresp = await mFetchWithRotation('POST', '/v1/ai/image-upscaler', ubody);
+      taskId = (uresp && uresp.data && uresp.data.task_id) ? uresp.data.task_id : (uresp && uresp.task_id ? uresp.task_id : null);
+      pollPath = '/v1/ai/image-upscaler';
+    }
+
+    if (!taskId) throw new Error('No task_id from API');
+
+    // Poll for result
+    await bqPollJob(job, taskId, pollPath, key);
+
+  } catch(e) {
+    job.status = 'failed';
+    job.error = e.message;
+    job.progress = 0;
+    bqRender();
+    dbg('ERROR', 'BQ job failed [' + job.label + ']: ' + e.message);
+  }
+}
+
+async function bqPollJob(job, taskId, pollPath, key) {
+  var maxAttempts = 150;
+  var intervalMs = 5000;
+  var attempt = 0;
+
+  return new Promise(function(resolve) {
+    function poll() {
+      attempt++;
+      if (attempt > maxAttempts) {
+        job.status = 'failed';
+        job.error = 'Timeout after ' + Math.round(maxAttempts * intervalMs / 60000) + ' min';
+        bqRender();
+        resolve();
+        return;
+      }
+      mFetch('GET', pollPath + '/' + taskId, null, key.key).then(function(data) {
+        var task = data && data.data ? data.data : data;
+        var status = task.task_status || task.status || '';
+        job.progress = Math.min(10 + (attempt / maxAttempts) * 85, 95);
+        // Update progress text
+        var ptEl = document.getElementById('bqjt-' + job.id);
+        if (ptEl) ptEl.textContent = status + ' — ' + Math.round(attempt * intervalMs / 1000) + 's';
+        // Update progress bar
+        var pbEl = document.querySelector('#bqj-' + job.id + ' .bq-job-prog-b');
+        if (pbEl) pbEl.style.width = job.progress + '%';
+
+        if (status === 'COMPLETED' || status === 'completed') {
+          var urls = task.generated || [];
+          job.result = urls[0] || null;
+          job.status = 'done';
+          job.progress = 100;
+          addHistory({ type: job.type, model: job.model || 'batch', prompt: job.prompt, url: job.result, thumb: job.result });
+          bqRender();
+          toast('✓ ' + job.label + ' done!', 'ok');
+          resolve();
+        } else if (status === 'FAILED' || status === 'failed') {
+          job.status = 'failed';
+          job.error = task.error || task.message || 'Generation failed';
+          bqRender();
+          resolve();
+        } else {
+          setTimeout(poll, intervalMs);
+        }
+      }).catch(function(e) {
+        if (attempt < maxAttempts) { setTimeout(poll, intervalMs * 2); }
+        else { job.status = 'failed'; job.error = e.message; bqRender(); resolve(); }
+      });
+    }
+    setTimeout(poll, intervalMs);
+  });
+}
+</script>
 </body>
 </html>
