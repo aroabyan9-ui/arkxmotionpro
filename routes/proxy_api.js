@@ -24,55 +24,40 @@ const upload = multer({
 const MAGNIFIC_BASE = 'https://api.magnific.com';
 const IMGBB_BASE    = 'https://api.imgbb.com';
 
-// ── Helper: forward request ke Magnific ──
-// Tries api.magnific.com first, falls back to api.freepik.com if 404
-async function forwardToMagnific(method, path_, body, apiKey, res) {
-  const bases = [
-    { url: 'https://api.magnific.com', keyHeader: 'x-magnific-api-key' },
-    { url: 'https://api.freepik.com',  keyHeader: 'x-freepik-api-key'  }
-  ];
-
-  let lastStatus = 500;
-  let lastData = {};
-
-  for (const base of bases) {
-    try {
-      const fullUrl = base.url + path_;
-      console.log(`[Proxy] ${method} → ${fullUrl}`);
-      const config = {
-        method,
-        url: fullUrl,
-        headers: {
-          [base.keyHeader]: apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: 60000,
-        validateStatus: () => true
-      };
-      if (body && method !== 'GET') config.data = body;
-
-      const resp = await axios(config);
-      console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status} (${base.url})`);
-
-      // If 404 on GET (task not found), try next base URL
-      if (resp.status === 404 && method === 'GET') {
-        lastStatus = resp.status;
-        lastData = resp.data;
-        console.log(`[Proxy] 404 on ${base.url}, trying next...`);
-        continue;
-      }
-
-      return res.status(resp.status).json(resp.data);
-    } catch (err) {
-      const msg = err.message || 'Proxy error';
-      console.error('[Proxy] Error:', method, path_, msg);
-      lastData = { error: msg, proxy: true };
-    }
+// ── Helper: detect key type and get correct header + base URL ──
+function getKeyConfig(apiKey) {
+  if (apiKey && (apiKey.startsWith('FPSX') || apiKey.startsWith('fpsx'))) {
+    return { base: 'https://api.freepik.com', header: 'x-freepik-api-key' };
   }
+  return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
+}
 
-  // All bases failed
-  res.status(lastStatus || 500).json(lastData);
+// ── Helper: forward request ke Magnific/Freepik ──
+async function forwardToMagnific(method, path_, body, apiKey, res) {
+  const { base, header } = getKeyConfig(apiKey);
+  const fullUrl = base + path_;
+  console.log(`[Proxy] ${method} → ${fullUrl} (header: ${header})`);
+  try {
+    const config = {
+      method,
+      url: fullUrl,
+      headers: {
+        [header]: apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 60000,
+      validateStatus: () => true
+    };
+    if (body && method !== 'GET') config.data = body;
+    const resp = await axios(config);
+    console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
+    res.status(resp.status).json(resp.data);
+  } catch (err) {
+    const msg = err.message || 'Proxy error';
+    console.error('[Proxy] Error:', method, path_, msg);
+    res.status(500).json({ error: msg, proxy: true });
+  }
 }
 
 // ── GET /proxy/test-poll ── Test polling langsung ke Magnific
