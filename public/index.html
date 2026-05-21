@@ -496,10 +496,18 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 <div class="g2">
 <div>
 <div class="card">
-  <div class="ch"><i class="fas fa-wand-sparkles"></i>Motion Control — Kling 2.6 Pro</div>
+  <div class="ch"><i class="fas fa-wand-sparkles"></i>Motion Control</div>
   <div class="cb">
+    <div class="fg"><label>Model</label>
+      <div class="mgrid" id="mMG" style="grid-template-columns:repeat(2,1fr)">
+        <div class="mc sel" data-m="kling-v2-6-std"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Std</div><div class="mc-b">max 30s</div></div>
+        <div class="mc" data-m="kling-v2-6-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">max 30s · HD</div></div>
+        <div class="mc" data-m="kling-v3-std"><div class="mc-i">🚀</div><div class="mc-n">Kling v3 Std</div><div class="mc-b">max 30s</div></div>
+        <div class="mc" data-m="kling-v3-pro"><div class="mc-i">👑</div><div class="mc-n">Kling v3 Pro</div><div class="mc-b">max 30s · Best</div></div>
+      </div>
+    </div>
     <div class="info-b"><i class="fas fa-circle-info"></i>
-      <div><b>Kling 2.6 Motion Control</b> — Video Orientation: max <b style="color:var(--g)">30s</b> · Image Orientation: max <b style="color:var(--w)">10s</b></div>
+      <div>Upload source image + reference video. Video Orientation: max <b style="color:var(--g)">30s</b> · Image Orientation: max <b style="color:var(--w)">10s</b></div>
     </div>
     <div class="fg"><label>Source Image <span style="color:var(--r)">*</span></label>
       <div class="dz" id="mImgDZ"><i class="fas fa-image"></i><p>Upload source image</p><span>Character must be clearly visible</span></div>
@@ -967,7 +975,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;background:
 var S = {
   page: 'video',
   vModel: 'kling-v2-6-pro', vMode: 't2v', vRatio: 'widescreen_16_9', vDur: '5',
-  mRatio: 'widescreen_16_9', mDur: '5', mCharOrientation: 'video',
+  mModel: 'kling-v2-6-pro', mRatio: 'widescreen_16_9', mDur: '5', mCharOrientation: 'video',
   iModel: 'mystic',
   upScale: '2x',
   keys: [], proxies: [], history: [], imgbbKey: '',
@@ -1766,12 +1774,21 @@ function resetVideoBtn() {
 // ══════════════════════════════════════════════
 // MOTION CONTROL
 // ══════════════════════════════════════════════
+var MOTION_ENDPOINTS = {
+  'kling-v2-6-std': { post: '/v1/ai/video/kling-v2-6-motion-control-std', poll: '/v1/ai/image-to-video/kling-v2-6' },
+  'kling-v2-6-pro': { post: '/v1/ai/video/kling-v2-6-motion-control-pro', poll: '/v1/ai/image-to-video/kling-v2-6' },
+  'kling-v3-std':   { post: '/v1/ai/video/kling-v3-motion-control-std',   poll: '/v1/ai/video/kling-v3-motion-control-std' },
+  'kling-v3-pro':   { post: '/v1/ai/video/kling-v3-motion-control-pro',   poll: '/v1/ai/video/kling-v3-motion-control-pro' }
+};
+
 async function genMotion() {
   var key = getBestKey();
   if (!key) { toast('No active API keys', 'err'); return; }
   if (!S.imgs.mImgUrl && !S.imgs.mImg) { toast('Upload a source image', 'err'); return; }
   var vidUrl = S.imgs.mVidUrl || document.getElementById('mVidUrlInp').value.trim();
   if (!vidUrl && !S.imgs.mVid) { toast('Upload a reference video or paste a URL', 'err'); return; }
+
+  var ep = MOTION_ENDPOINTS[S.mModel] || MOTION_ENDPOINTS['kling-v2-6-pro'];
 
   var btn = document.getElementById('mBtn');
   btn.disabled = true;
@@ -1802,19 +1819,19 @@ async function genMotion() {
       aspect_ratio: S.mRatio,
       character_orientation: S.mCharOrientation
     };
-    dbg('REQUEST', 'genMotion: dur=' + S.mDur + ' orientation=' + S.mCharOrientation);
-    var resp = await mFetchWithRotation('POST', '/v1/ai/video/kling-v2-6-motion-control-pro', body);
+    dbg('REQUEST', 'genMotion: model=' + S.mModel + ' dur=' + S.mDur + ' orientation=' + S.mCharOrientation);
+    var resp = await mFetchWithRotation('POST', ep.post, body);
     var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp));
     dbg('INFO', 'Motion task: ' + taskId);
-    pollTask(taskId, '/v1/ai/image-to-video/kling-v2-6', key.id, 'mPB', 'mPT', null,
+    pollTask(taskId, ep.poll, key.id, 'mPB', 'mPT', null,
       function(url) {
         document.getElementById('mProg').style.display = 'none';
         if (url) {
           S.results.m = url;
           document.getElementById('mRes').innerHTML = '<video controls autoplay loop src="' + url + '" style="width:100%;max-height:360px"></video>';
           document.getElementById('mRA').style.display = 'flex';
-          addHistory({ type: 'video', model: 'motion-control', prompt: body.prompt || 'Motion Control', url: url, thumb: url });
+          addHistory({ type: 'video', model: 'motion-' + S.mModel, prompt: body.prompt || 'Motion Control', url: url, thumb: url });
           toast('Motion video generated!', 'ok');
         }
         resetMotionBtn();
@@ -1825,8 +1842,8 @@ async function genMotion() {
         toast('Motion failed: ' + err, 'err');
         resetMotionBtn();
       },
-      200, // maxAttempts: 200 × 5s = ~16 menit untuk motion 30s
-      5000  // intervalMs: poll setiap 5 detik
+      200, // 200 × 5s = ~16 menit
+      5000
     );
   } catch(e) {
     document.getElementById('mProg').style.display = 'none';
@@ -2442,7 +2459,7 @@ async function refreshPendingCount() {
 // UI SELECTION HELPERS
 // ══════════════════════════════════════════════
 function pickModel(el, group) {
-  var container = document.getElementById(group === 'v' ? 'vMG' : group === 'i' ? 'iMG' : '');
+  var container = document.getElementById(group === 'v' ? 'vMG' : group === 'i' ? 'iMG' : group === 'm' ? 'mMG' : '');
   if (container) container.querySelectorAll('.mc').forEach(function(m) { m.classList.remove('sel'); });
   el.classList.add('sel');
   if (group === 'v') {
@@ -2452,6 +2469,7 @@ function pickModel(el, group) {
     var audioGrp = document.getElementById('vAudioGrp');
     if (audioGrp) audioGrp.style.display = audioModels.indexOf(S.vModel) !== -1 ? 'block' : 'none';
   }
+  if (group === 'm') S.mModel = el.dataset.m;
   if (group === 'i') {
     S.iModel = el.dataset.m;
     // Show/hide OpenAI notice
@@ -2573,6 +2591,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('vCpBtn').addEventListener('click', function() { cpUrl('v'); });
 
   // ── Motion page
+  document.getElementById('mMG').addEventListener('click', function(e) {
+    var mc = e.target.closest('.mc');
+    if (mc) pickModel(mc, 'm');
+  });
   document.getElementById('mCORow').addEventListener('click', function(e) {
     var btn = e.target.closest('.mbt');
     if (btn) pickCO(btn);
