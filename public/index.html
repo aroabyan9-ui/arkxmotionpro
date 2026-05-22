@@ -456,7 +456,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
       <div class="mgrid" id="vMG">
         <div class="mc sel" data-m="kling-v2-6-pro"><div class="mc-i">🎬</div><div class="mc-n">Kling 2.6 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
         <div class="mc" data-m="kling-v2-5-pro"><div class="mc-i">⚡</div><div class="mc-n">Kling 2.5 Pro</div><div class="mc-b">🔊 Audio · 5/10s</div></div>
-        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">I2V · 5/10/15s</div></div>
+        <div class="mc" data-m="wan-2-6"><div class="mc-i">🌊</div><div class="mc-n">WAN 2.6</div><div class="mc-b">T2V + I2V · 1080p</div></div>
         <div class="mc" data-m="seedance-pro"><div class="mc-i">🌱</div><div class="mc-n">Seedance 1.5 Pro</div><div class="mc-b">🔊 Audio+Lipsync</div></div>
         <div class="mc" data-m="hailuo-2-3"><div class="mc-i">🎯</div><div class="mc-n">Hailuo 2.3</div><div class="mc-b">I2V · 6s fixed</div></div>
         <div class="mc" data-m="runway-gen4"><div class="mc-i">🚀</div><div class="mc-n">RunWay Gen4</div><div class="mc-b">I2V only · 5/10s</div></div>
@@ -917,6 +917,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   <div class="ch"><i class="fas fa-key"></i>Magnific API Keys <span id="magStats" style="margin-left:8px;font-size:11px"></span>
     <div class="ch-r">
       <button class="bsm" id="resetAllKeysBtn" style="border-color:rgba(0,255,136,.4);color:var(--g)"><i class="fas fa-rotate"></i>Reset All</button>
+      <button class="bsm btn-danger" id="deleteAllKeysBtn"><i class="fas fa-trash"></i>Delete All</button>
       <button class="bsm" id="toggleBulkBtn"><i class="fas fa-list"></i>Bulk Add</button>
       <button class="bsm" id="uploadKeysBtn"><i class="fas fa-upload"></i>Upload .txt</button>
       <input type="file" id="keyFileInp" accept=".txt" style="display:none">
@@ -1666,6 +1667,14 @@ function resetAllKeys() {
   toast('All keys reset to active!', 'ok');
 }
 
+function deleteAllKeys() {
+  if (!confirm('Delete ALL ' + S.keys.length + ' keys? This cannot be undone.')) return;
+  S.keys = [];
+  DB.save('keys', S.keys);
+  renderKeys(); updateSBStatus();
+  toast('All keys deleted', 'ok');
+}
+
 async function testKey(id) {
   var k = S.keys.find(function(x) { return x.id === id; });
   if (!k) return;
@@ -2235,7 +2244,8 @@ async function pollTask(taskId, taskPath, keyId, pbId, ptId, psId, onDone, onFai
 var VIDEO_ENDPOINTS = {
   'kling-v2-6-pro': { post: '/v1/ai/image-to-video/kling-v2-6-pro',           poll: '/v1/ai/image-to-video/kling-v2-6' },
   'kling-v2-5-pro': { post: '/v1/ai/image-to-video/kling-v2-5-pro',           poll: '/v1/ai/image-to-video/kling-v2-5' },
-  'wan-2-6':        { post: '/v1/ai/image-to-video/wan-v2-6-1080p',            poll: '/v1/ai/image-to-video/wan-v2-6-1080p' },
+  'wan-2-6':        { post_t2v: '/v1/ai/text-to-video/wan-v2-6-1080p',        poll_t2v: '/v1/ai/text-to-video/wan-v2-6-1080p',
+                      post: '/v1/ai/image-to-video/wan-v2-6-1080p',            poll: '/v1/ai/image-to-video/wan-v2-6-1080p' },
   'seedance-pro':   { post: '/v1/ai/video/seedance-1-5-pro-1080p',             poll: '/v1/ai/video/seedance-1-5-pro-1080p' },
   'hailuo-2-3':     { post: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p', poll: '/v1/ai/image-to-video/minimax-hailuo-2-3-1080p' },
   'runway-gen4':    { post: '/v1/ai/image-to-video/runway-gen4-turbo',         poll: '/v1/ai/image-to-video/runway-gen4-turbo' }
@@ -2290,13 +2300,16 @@ async function genVideo() {
       if (imgUrl) body.image_url = imgUrl;
 
     } else if (m === 'wan-2-6') {
-      // WAN 2.6: 'image' field, 'size' not aspect_ratio, duration string
+      // WAN 2.6: T2V uses /text-to-video endpoint, I2V uses /image-to-video endpoint
       var wanSizeMap = {'widescreen_16_9':'1920*1080','social_story_9_16':'1080*1920','square_1_1':'1440*1440'};
       body.size = wanSizeMap[ratio] || '1920*1080';
       body.duration = dur <= 5 ? '5' : dur <= 10 ? '10' : '15';
       if (neg) body.negative_prompt = neg;
-      if (imgUrl) body.image = imgUrl;
-
+      if (imgUrl) {
+        body.image = imgUrl;
+      } else {
+        ep = { post: '/v1/ai/text-to-video/wan-v2-6-1080p', poll: '/v1/ai/text-to-video/wan-v2-6-1080p' };
+      }
     } else if (m === 'seedance-pro') {
       // Seedance 1.5 Pro: 'image' field, duration int, aspect_ratio, generate_audio
       body.duration = dur;
@@ -3285,6 +3298,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (action === 'test') testKey(id);
   });
   document.getElementById('resetAllKeysBtn').addEventListener('click', resetAllKeys);
+  document.getElementById('deleteAllKeysBtn').addEventListener('click', deleteAllKeys);
   // Load saved ImgBB key into input
   if (S.imgbbKey) {
     document.getElementById('imgbbKeyInp').value = S.imgbbKey;
