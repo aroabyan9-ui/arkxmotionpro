@@ -13,17 +13,6 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
-// Safe proxy agent creation
-function createProxyAgent(proxyUrl) {
-  if (!proxyUrl) return null;
-  try {
-    return new HttpsProxyAgent(proxyUrl);
-  } catch(e) {
-    console.warn('[Proxy] Invalid proxy URL:', proxyUrl, e.message);
-    return null;
-  }
-}
-
 // Multer: terima file binary DAN field text besar (base64)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -35,27 +24,8 @@ const upload = multer({
 
 const IMGBB_BASE = 'https://api.imgbb.com';
 
-// ── Proxy pool — loaded from data/proxies.json ──
-let proxyPool = [];
-let proxyIndex = 0;
-
-function loadProxies() {
-  try {
-    const data = fs.readJsonSync('./data/proxies.json');
-    proxyPool = Array.isArray(data) ? data.map(p => p.url || p).filter(Boolean) : [];
-    console.log(`[Proxy] Loaded ${proxyPool.length} proxies`);
-  } catch(e) {
-    proxyPool = [];
-  }
-}
-
-function getNextProxy() {
-  loadProxies(); // reload setiap kali untuk dapat update terbaru
-  if (!proxyPool.length) return null;
-  const proxy = proxyPool[proxyIndex % proxyPool.length];
-  proxyIndex++;
-  return proxy;
-}
+// Use proxyManager for proxy rotation
+const { proxyManager } = require('../services/proxyManager');
 
 // ── Helper: detect key type and get correct header + base URL ──
 function getKeyConfig(apiKey) {
@@ -69,9 +39,10 @@ function getKeyConfig(apiKey) {
 async function forwardToMagnific(method, path_, body, apiKey, res) {
   const { base, header } = getKeyConfig(apiKey);
   const fullUrl = base + path_;
-  const proxyUrl = getNextProxy();
 
-  console.log(`[Proxy] ${method} → ${fullUrl} | proxy: ${proxyUrl || 'none'}`);
+  // Get proxy from proxyManager
+  const proxyInfo = proxyManager.getAgent();
+  console.log(`[Proxy] ${method} → ${fullUrl} | proxy: ${proxyInfo ? 'yes' : 'none'}`);
 
   try {
     const config = {
@@ -86,21 +57,27 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
       validateStatus: () => true
     };
 
-    // Pakai proxy kalau ada
-    if (proxyUrl) {
-      const agent = createProxyAgent(proxyUrl);
-      if (agent) {
-        config.httpsAgent = agent;
-        config.proxy = false;
-      }
+    if (proxyInfo) {
+      config.httpsAgent = proxyInfo.agent;
+      config.proxy = false;
     }
 
     if (body && method !== 'GET') config.data = body;
 
     const resp = await axios(config);
     console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
+
+    if (proxyInfo) {
+      if (resp.status === 403 || resp.status === 429) {
+        proxyManager.markError(proxyInfo.proxyId);
+      } else {
+        proxyManager.markSuccess(proxyInfo.proxyId);
+      }
+    }
+
     res.status(resp.status).json(resp.data);
   } catch (err) {
+    if (proxyInfo) proxyManager.markError(proxyInfo.proxyId);
     const msg = err.message || 'Proxy error';
     console.error('[Proxy] Error:', method, path_, msg);
     res.status(500).json({ error: msg, proxy: true });
