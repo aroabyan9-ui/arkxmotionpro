@@ -406,7 +406,6 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="na" data-pg="motion"><i class="fas fa-wand-sparkles"></i>Motion Control</div>
     <div class="sep"></div>
     <div class="na" data-pg="image"><i class="fas fa-image"></i>Image Generate</div>
-    <div class="na" data-pg="hfimage"><i class="fas fa-brain" style="color:#fbbf24"></i>HF Image <span style="font-size:9px;color:var(--g);margin-left:3px">FREE</span></div>
     <div class="sep"></div>
     <div class="na" data-pg="upscale"><i class="fas fa-expand-arrows-alt"></i>Upscale Ultra</div>
     <div class="na" data-pg="relight"><i class="fas fa-sun"></i>AI Relight</div>
@@ -697,75 +696,6 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
     <div class="prog-w" id="iProg" style="display:none">
       <div class="prog-bg"><div class="prog-b" id="iPB"></div></div>
       <div class="prog-t" id="iPT">Generating...</div>
-    </div>
-  </div>
-</div>
-</div>
-</div>
-</div>
-
-<!-- ══ PAGE: HF IMAGE GENERATE (FREE) ══ -->
-<div class="pg" id="pg-hfimage">
-<div class="g2">
-<div>
-<div class="card">
-  <div class="ch"><i class="fas fa-brain" style="color:#fbbf24"></i>HuggingFace Image Generate <span style="font-size:10px;color:var(--g);margin-left:6px">🆓 GRATIS</span></div>
-  <div class="cb">
-    <div class="info-b"><i class="fas fa-circle-info"></i>
-      <div>Generate gambar gratis pakai HuggingFace. Butuh <b style="color:#fbbf24">HF API Key</b> (gratis di huggingface.co). Tidak butuh Magnific key!</div>
-    </div>
-    <div class="fg"><label>Model</label>
-      <div class="mgrid" id="hfMG">
-        <div class="mc sel" data-m="black-forest-labs/FLUX.1-schnell"><div class="mc-i">⚡</div><div class="mc-n">FLUX.1 Schnell</div><div class="mc-b">Fastest · Free</div></div>
-        <div class="mc" data-m="black-forest-labs/FLUX.1-dev"><div class="mc-i">🔥</div><div class="mc-n">FLUX.1 Dev</div><div class="mc-b">High Quality</div></div>
-        <div class="mc" data-m="stabilityai/stable-diffusion-xl-base-1.0"><div class="mc-i">🎨</div><div class="mc-n">SDXL 1.0</div><div class="mc-b">Classic SD</div></div>
-        <div class="mc" data-m="runwayml/stable-diffusion-v1-5"><div class="mc-i">🚀</div><div class="mc-n">SD 1.5</div><div class="mc-b">Fast & Light</div></div>
-        <div class="mc" data-m="Lykon/dreamshaper-8"><div class="mc-i">✨</div><div class="mc-n">DreamShaper 8</div><div class="mc-b">Artistic</div></div>
-        <div class="mc" data-m="SG161222/Realistic_Vision_V6.0_B1_noVAE"><div class="mc-i">📸</div><div class="mc-n">Realistic Vision</div><div class="mc-b">Photorealistic</div></div>
-      </div>
-    </div>
-    <div class="fg"><label>Prompt <span style="color:var(--r)">*</span></label>
-      <div class="enh-wrap">
-        <textarea class="ta" id="hfPrompt" rows="4" placeholder="Describe the image you want to generate..."></textarea>
-        <button class="enh-btn" onclick="groqEnhancePrompt(document.getElementById('hfPrompt').value,'image','hfPrompt')"><i class="fas fa-wand-magic-sparkles"></i>Enhance</button>
-      </div>
-    </div>
-    <div class="fg"><label>Negative Prompt <span style="color:var(--t3);font-size:10px">(optional)</span></label>
-      <textarea class="ta" id="hfNeg" rows="2" placeholder="blurry, low quality, watermark..."></textarea>
-    </div>
-    <div class="r2">
-      <div class="fg"><label>Width</label>
-        <select class="sel" id="hfWidth">
-          <option value="512">512px</option>
-          <option value="768">768px</option>
-          <option value="1024" selected>1024px</option>
-        </select>
-      </div>
-      <div class="fg"><label>Height</label>
-        <select class="sel" id="hfHeight">
-          <option value="512">512px</option>
-          <option value="768">768px</option>
-          <option value="1024" selected>1024px</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn-gen" id="hfGenBtn" style="background:linear-gradient(135deg,#fbbf24,#d97706,#f97316)"><i class="fas fa-brain"></i>Generate FREE</button>
-  </div>
-</div>
-</div>
-<div>
-<div class="card">
-  <div class="ch"><i class="fas fa-image"></i>Result
-    <div class="ch-r" id="hfRA" style="display:none">
-      <button class="bsm" id="hfDlBtn"><i class="fas fa-download"></i>Download</button>
-      <button class="bsm" id="hfCpBtn"><i class="fas fa-copy"></i>Copy URL</button>
-    </div>
-  </div>
-  <div class="cb">
-    <div class="res-a" id="hfRes"><div class="res-ph"><i class="fas fa-brain" style="color:#fbbf24;opacity:.3"></i><p>Generated image appears here</p></div></div>
-    <div class="prog-w" id="hfProg" style="display:none">
-      <div class="prog-bg"><div class="prog-b" id="hfPB" style="background:linear-gradient(90deg,#fbbf24,#f97316)"></div></div>
-      <div class="prog-t" id="hfPT">Generating...</div>
     </div>
   </div>
 </div>
@@ -1347,8 +1277,8 @@ var S = {
   mModel: 'kling-v2-6-pro', mRatio: 'widescreen_16_9', mDur: '5', mCharOrientation: 'video',
   iModel: 'mystic',
   upScale: '2x',
-  keys: [], proxies: [], history: [], imgbbKey: '', groqKey: '', hfKey: '',
-  results: { v: null, m: null, i: null, up: null, rl: null, st: null, hf: null },
+  keys: [], proxies: [], history: [], imgbbKey: '', groqKey: '',
+  results: { v: null, m: null, i: null, up: null, rl: null, st: null },
   imgs: {
     vImg: null, vImgUrl: null,
     mImg: null, mImgUrl: null, mVid: null, mVidUrl: null,
@@ -2401,67 +2331,42 @@ async function genVideo() {
     var neg = document.getElementById('vNeg').value.trim();
 
     if (m === 'kling-v2-6-pro' || m === 'kling-v2-5-pro') {
-      // Kling: duration MUST be string "5" or "10" only, aspect_ratio, cfg_scale, generate_audio
-      var klingDur = (dur >= 10) ? '10' : '5';
-      body.duration = klingDur;
+      // Kling: duration string "5"/"10", aspect_ratio, cfg_scale, generate_audio
+      body.duration = (dur >= 10) ? '10' : '5';
       body.aspect_ratio = ratio;
       body.cfg_scale = cfg;
       body.generate_audio = audio;
       if (neg) body.negative_prompt = neg;
-      if (imgUrl) body.image_url = imgUrl; // optional for i2v
+      if (imgUrl) body.image_url = imgUrl;
 
     } else if (m === 'wan-2-6') {
-      // WAN 2.6: image REQUIRED for i2v, uses 'image' field + 'size' (not aspect_ratio)
-      // duration string "5"/"10"/"15", size like "1920*1080"
-      var wanSizeMap = {
-        'widescreen_16_9': '1920*1080',
-        'social_story_9_16': '1080*1920',
-        'square_1_1': '1440*1440'
-      };
-      var wanDur = dur <= 5 ? '5' : dur <= 10 ? '10' : '15';
+      // WAN 2.6: 'image' field, 'size' not aspect_ratio, duration string
+      var wanSizeMap = {'widescreen_16_9':'1920*1080','social_story_9_16':'1080*1920','square_1_1':'1440*1440'};
       body.size = wanSizeMap[ratio] || '1920*1080';
-      body.duration = wanDur;
+      body.duration = dur <= 5 ? '5' : dur <= 10 ? '10' : '15';
       if (neg) body.negative_prompt = neg;
-      if (imgUrl) {
-        body.image = imgUrl; // WAN uses 'image' not 'image_url'
-      } else if (S.vMode === 'i2v') {
-        toast('WAN 2.6 requires an image for Image-to-Video mode', 'err');
-        resetVideoBtn(); return;
-      }
+      if (imgUrl) body.image = imgUrl;
 
     } else if (m === 'seedance-pro') {
-      // Seedance 1.5 Pro: image field, duration int, aspect_ratio, generate_audio
+      // Seedance 1.5 Pro: 'image' field, duration int, aspect_ratio, generate_audio
       body.duration = dur;
       body.aspect_ratio = ratio;
       body.generate_audio = audio;
       if (imgUrl) body.image = imgUrl;
 
     } else if (m === 'hailuo-2-3') {
-      // Hailuo 2.3: first_frame_image REQUIRED (i2v only!), duration fixed 6, prompt_optimizer
-      body.duration = 6; // only 6s supported
+      // Hailuo 2.3: first_frame_image, duration fixed 6, prompt_optimizer
+      body.duration = 6;
       body.prompt_optimizer = true;
-      if (imgUrl) {
-        body.first_frame_image = imgUrl;
-      } else if (S.vMode === 'i2v') {
-        toast('Hailuo 2.3 requires an image for Image-to-Video mode', 'err');
-        resetVideoBtn(); return;
-      }
+      if (imgUrl) body.first_frame_image = imgUrl;
 
     } else if (m === 'runway-gen4') {
-      // Runway Gen4: image REQUIRED (i2v only!), duration int 5/10, ratio "1280:720" format
-      var ratioMap = {
-        'widescreen_16_9': '1280:720',
-        'social_story_9_16': '720:1280',
-        'square_1_1': '960:960'
-      };
+      // Runway Gen4: 'image' required, ratio "1280:720" format, duration int
+      var ratioMap = {'widescreen_16_9':'1280:720','social_story_9_16':'720:1280','square_1_1':'960:960'};
       body.ratio = ratioMap[ratio] || '1280:720';
       body.duration = (dur >= 10) ? 10 : 5;
-      if (imgUrl) {
-        body.image = imgUrl;
-      } else {
-        toast('Runway Gen4 requires an image (Image-to-Video only)', 'err');
-        resetVideoBtn(); return;
-      }
+      if (imgUrl) { body.image = imgUrl; }
+      else { toast('Runway Gen4 requires an image (I2V only)', 'err'); resetVideoBtn(); return; }
     }
 
     dbg('REQUEST', 'genVideo: ' + m + ' mode=' + S.vMode + ' prompt=' + prompt.substring(0, 60));
@@ -3413,7 +3318,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('addKeyBtn').addEventListener('click', addKey);
   document.getElementById('saveImgBBBtn').addEventListener('click', saveImgBBKey);
   document.getElementById('saveGroqBtn').addEventListener('click', saveGroqKey);
-  document.getElementById('saveHFBtn').addEventListener('click', saveHFKey);
+
   document.getElementById('toggleBulkBtn').addEventListener('click', toggleBulk);
   document.getElementById('addBulkBtn').addEventListener('click', addBulk);
   document.getElementById('uploadKeysBtn').addEventListener('click', function() { document.getElementById('keyFileInp').click(); });
