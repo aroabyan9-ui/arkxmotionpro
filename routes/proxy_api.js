@@ -11,18 +11,40 @@ const FormData = require('form-data');
 const fs = require('fs-extra');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 // Multer: terima file binary DAN field text besar (base64)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 200 * 1024 * 1024,   // 200MB file
-    fieldSize: 50 * 1024 * 1024    // 50MB field value (untuk base64)
+    fileSize: 200 * 1024 * 1024,
+    fieldSize: 50 * 1024 * 1024
   }
 });
 
-const MAGNIFIC_BASE = 'https://api.magnific.com';
-const IMGBB_BASE    = 'https://api.imgbb.com';
+const IMGBB_BASE = 'https://api.imgbb.com';
+
+// ── Proxy pool — loaded from data/proxies.json ──
+let proxyPool = [];
+let proxyIndex = 0;
+
+function loadProxies() {
+  try {
+    const data = fs.readJsonSync('./data/proxies.json');
+    proxyPool = Array.isArray(data) ? data.map(p => p.url || p).filter(Boolean) : [];
+    console.log(`[Proxy] Loaded ${proxyPool.length} proxies`);
+  } catch(e) {
+    proxyPool = [];
+  }
+}
+
+function getNextProxy() {
+  loadProxies(); // reload setiap kali untuk dapat update terbaru
+  if (!proxyPool.length) return null;
+  const proxy = proxyPool[proxyIndex % proxyPool.length];
+  proxyIndex++;
+  return proxy;
+}
 
 // ── Helper: detect key type and get correct header + base URL ──
 function getKeyConfig(apiKey) {
@@ -31,12 +53,18 @@ function getKeyConfig(apiKey) {
   }
   return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
 }
+  }
+  return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
+}
 
 // ── Helper: forward request ke Magnific/Freepik ──
 async function forwardToMagnific(method, path_, body, apiKey, res) {
   const { base, header } = getKeyConfig(apiKey);
   const fullUrl = base + path_;
-  console.log(`[Proxy] ${method} → ${fullUrl} (header: ${header})`);
+  const proxyUrl = getNextProxy();
+
+  console.log(`[Proxy] ${method} → ${fullUrl} | proxy: ${proxyUrl || 'none'}`);
+
   try {
     const config = {
       method,
@@ -49,7 +77,19 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
       timeout: 60000,
       validateStatus: () => true
     };
+
+    // Pakai proxy kalau ada
+    if (proxyUrl) {
+      try {
+        config.httpsAgent = new HttpsProxyAgent(proxyUrl);
+        config.proxy = false; // disable axios default proxy, pakai httpsAgent
+      } catch(pe) {
+        console.warn('[Proxy] Invalid proxy URL:', proxyUrl, pe.message);
+      }
+    }
+
     if (body && method !== 'GET') config.data = body;
+
     const resp = await axios(config);
     console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
     res.status(resp.status).json(resp.data);
