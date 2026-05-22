@@ -117,6 +117,16 @@ server.listen(PORT, '0.0.0.0', () => {
       console.error('Admin auto-create error:', e.message);
     }
   }, 2000);
+
+  // Init Telegram bot (silent if no token)
+  setTimeout(() => {
+    try {
+      const telegram = require('./services/telegram');
+      telegram.init();
+    } catch(e) {
+      console.warn('[Telegram] Init skipped:', e.message);
+    }
+  }, 3000);
 });
 
 module.exports = { app, io };
