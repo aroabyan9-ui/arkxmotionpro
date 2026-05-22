@@ -1301,7 +1301,6 @@ var DB = {
 S.keys = DB.load('keys', []);
 S.imgbbKey = DB.load('imgbbKey', '');
 S.groqKey = DB.load('groqKey', '');
-S.hfKey = DB.load('hfKey', '');
 S.proxies = DB.load('proxies', []);
 S.history = DB.load('history', []);
 
@@ -1706,88 +1705,6 @@ function saveGroqKey() {
   toast('Groq key saved!', 'ok');
 }
 
-function saveHFKey() {
-  var v = document.getElementById('hfKeyInp').value.trim();
-  if (!v) { toast('Enter HuggingFace API key', 'err'); return; }
-  S.hfKey = v;
-  DB.save('hfKey', v);
-  var st = document.getElementById('hfStatus');
-  if (st) { st.textContent = 'Saved ✓'; st.style.color = 'var(--g)'; }
-  toast('HuggingFace key saved!', 'ok');
-}
-
-// HF selected model
-var S_hfModel = 'black-forest-labs/FLUX.1-schnell';
-
-async function genHFImage() {
-  if (!S.hfKey) { toast('Set HuggingFace API key in API Keys page first', 'warn'); return; }
-  var prompt = document.getElementById('hfPrompt').value.trim();
-  if (!prompt) { toast('Enter a prompt', 'err'); return; }
-
-  var btn = document.getElementById('hfGenBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Generating...';
-  document.getElementById('hfProg').style.display = 'block';
-  document.getElementById('hfRA').style.display = 'none';
-  document.getElementById('hfRes').innerHTML = '<div class="res-ph"><i class="fas fa-spinner fa-spin" style="opacity:.5"></i><p>Generating with HuggingFace...</p></div>';
-  document.getElementById('hfPB').style.width = '30%';
-  document.getElementById('hfPT').textContent = 'Sending to HuggingFace...';
-
-  var maxRetries = 3;
-  var attempt = 0;
-
-  async function tryGenerate() {
-    attempt++;
-    try {
-      var r = await fetch(PROXY + '/proxy/hf/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-hf-api-key': S.hfKey },
-        body: JSON.stringify({
-          prompt: prompt,
-          model: S_hfModel,
-          negative_prompt: document.getElementById('hfNeg').value.trim() || undefined,
-          width: parseInt(document.getElementById('hfWidth').value),
-          height: parseInt(document.getElementById('hfHeight').value)
-        })
-      });
-      var data = await r.json();
-
-      if (r.status === 503 && data.loading) {
-        // Model loading — retry after delay
-        document.getElementById('hfPT').textContent = 'Model loading... retry ' + attempt + '/' + maxRetries + ' in 20s';
-        document.getElementById('hfPB').style.width = (attempt * 20) + '%';
-        if (attempt < maxRetries) {
-          await new Promise(function(res) { setTimeout(res, 20000); });
-          return tryGenerate();
-        } else {
-          throw new Error('Model still loading after ' + maxRetries + ' retries. Try again in 1 minute.');
-        }
-      }
-
-      if (!data.success) throw new Error(data.error || 'Generation failed');
-
-      document.getElementById('hfPB').style.width = '100%';
-      document.getElementById('hfPT').textContent = 'Done!';
-      document.getElementById('hfProg').style.display = 'none';
-
-      var url = data.url || data.dataUrl;
-      S.results.hf = url;
-      document.getElementById('hfRes').innerHTML = '<img src="' + url + '" style="width:100%;max-height:400px;object-fit:contain" alt="Generated">';
-      document.getElementById('hfRA').style.display = 'flex';
-      addHistory({ type: 'image', model: 'hf-' + S_hfModel.split('/').pop(), prompt: prompt, url: url, thumb: url });
-      toast('Image generated! 🆓', 'ok');
-
-    } catch(e) {
-      document.getElementById('hfProg').style.display = 'none';
-      document.getElementById('hfRes').innerHTML = '<div class="res-ph"><i class="fas fa-circle-xmark" style="color:var(--r)"></i><p>' + escHtml(e.message) + '</p></div>';
-      toast('HF Error: ' + e.message, 'err');
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-brain"></i>Generate FREE';
-  }
-
-  tryGenerate();
-}
 
 // ══════════════════════════════════════════════
 // GROQ AI FUNCTIONS
@@ -3433,32 +3350,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (gInp) gInp.value = S.groqKey;
     var gSt = document.getElementById('groqStatus');
     if (gSt) { gSt.textContent = 'Saved ✓'; gSt.style.color = 'var(--g)'; }
-  }
-
-  // ── HF Image page
-  document.getElementById('hfMG').addEventListener('click', function(e) {
-    var mc = e.target.closest('.mc');
-    if (!mc) return;
-    document.querySelectorAll('#hfMG .mc').forEach(function(m) { m.classList.remove('sel'); });
-    mc.classList.add('sel');
-    S_hfModel = mc.dataset.m;
-  });
-  document.getElementById('hfGenBtn').addEventListener('click', genHFImage);
-  document.getElementById('hfDlBtn').addEventListener('click', function() {
-    var url = S.results.hf; if (!url) return;
-    var a = document.createElement('a'); a.href = url; a.download = 'arkx-hf-' + Date.now() + '.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  });
-  document.getElementById('hfCpBtn').addEventListener('click', function() {
-    var url = S.results.hf; if (!url) return;
-    navigator.clipboard.writeText(url).then(function() { toast('URL copied!', 'ok'); });
-  });
-  // Load saved HF key
-  if (S.hfKey) {
-    var hfInp = document.getElementById('hfKeyInp');
-    if (hfInp) hfInp.value = S.hfKey;
-    var hfSt = document.getElementById('hfStatus');
-    if (hfSt) { hfSt.textContent = 'Saved ✓'; hfSt.style.color = 'var(--g)'; }
   }
 
   // ── Drop zones setup
