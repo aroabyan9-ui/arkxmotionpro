@@ -944,6 +944,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 <div class="card">
   <div class="ch"><i class="fas fa-shield-halved"></i>Proxy Manager
     <div class="ch-r">
+      <button class="bsm" id="syncProxiesBtn" style="border-color:rgba(0,255,136,.4);color:var(--g)"><i class="fas fa-rotate"></i>Sync to Server</button>
       <button class="bsm" id="toggleProxyBulkBtn"><i class="fas fa-list"></i>Bulk Add</button>
       <button class="bsm" id="uploadProxiesBtn"><i class="fas fa-upload"></i>Upload .txt</button>
       <input type="file" id="proxyFileInp" accept=".txt" style="display:none">
@@ -1497,6 +1498,10 @@ function loadMainApp() {
   renderHistory();
   updateStats();
   goPage('video');
+  // Auto-sync proxies to server on load
+  if (S.proxies.length > 0) {
+    setTimeout(syncAllProxiesToServer, 2000);
+  }
   dbg('INFO', 'App loaded. User: ' + (AUTH.user ? AUTH.user.email : 'unknown'));
 }
 
@@ -1971,6 +1976,32 @@ function addProxy() {
   document.getElementById('proxyLblInp').value = '';
   renderProxies();
   toast('Proxy added', 'ok');
+  // Sync to server
+  syncProxyToServer(url, lbl);
+}
+
+async function syncProxyToServer(url, label) {
+  try {
+    await fetch(PROXY + '/proxy/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url, label: label || url })
+    });
+    dbg('INFO', 'Proxy synced to server: ' + url);
+  } catch(e) { dbg('ERROR', 'Proxy sync failed: ' + e.message); }
+}
+
+async function syncAllProxiesToServer() {
+  if (!S.proxies.length) return;
+  try {
+    await fetch(PROXY + '/proxy/add-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proxies: S.proxies.map(function(p) { return p.url; }) })
+    });
+    dbg('INFO', 'All proxies synced to server: ' + S.proxies.length);
+    toast('Proxies synced to server!', 'ok');
+  } catch(e) { dbg('ERROR', 'Proxy sync failed: ' + e.message); }
 }
 
 function addProxyBulk() {
@@ -2239,7 +2270,9 @@ async function genVideo() {
     }
 
     // Build body per-model — each model has different field names
-    var body = { prompt: prompt };
+    // Truncate prompt to 500 chars to avoid Magnific 512 char limit
+    var truncPrompt = prompt.length > 500 ? prompt.substring(0, 500) : prompt;
+    var body = { prompt: truncPrompt };
     var m = S.vModel;
     var dur = parseInt(S.vDur);
     var ratio = S.vRatio;
@@ -3261,6 +3294,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Proxy page
   document.getElementById('addProxyBtn').addEventListener('click', addProxy);
+  document.getElementById('syncProxiesBtn').addEventListener('click', syncAllProxiesToServer);
   document.getElementById('toggleProxyBulkBtn').addEventListener('click', function() {
     var el = document.getElementById('proxyBulkArea');
     if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
