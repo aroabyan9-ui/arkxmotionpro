@@ -13,6 +13,17 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
+// Safe proxy agent creation
+function createProxyAgent(proxyUrl) {
+  if (!proxyUrl) return null;
+  try {
+    return new HttpsProxyAgent(proxyUrl);
+  } catch(e) {
+    console.warn('[Proxy] Invalid proxy URL:', proxyUrl, e.message);
+    return null;
+  }
+}
+
 // Multer: terima file binary DAN field text besar (base64)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -53,9 +64,6 @@ function getKeyConfig(apiKey) {
   }
   return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
 }
-  }
-  return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
-}
 
 // ── Helper: forward request ke Magnific/Freepik ──
 async function forwardToMagnific(method, path_, body, apiKey, res) {
@@ -80,11 +88,10 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
 
     // Pakai proxy kalau ada
     if (proxyUrl) {
-      try {
-        config.httpsAgent = new HttpsProxyAgent(proxyUrl);
-        config.proxy = false; // disable axios default proxy, pakai httpsAgent
-      } catch(pe) {
-        console.warn('[Proxy] Invalid proxy URL:', proxyUrl, pe.message);
+      const agent = createProxyAgent(proxyUrl);
+      if (agent) {
+        config.httpsAgent = agent;
+        config.proxy = false;
       }
     }
 
