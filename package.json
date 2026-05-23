@@ -1,7 +1,7 @@
 {
   "name": "arkxmotionpro",
   "version": "1.0.0",
- "description": "ARKX Motion Pro - AI Video & Image Generation Tools v2,
+  "description": "ARKX Motion Pro - AI Video & Image Generation Tools",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
