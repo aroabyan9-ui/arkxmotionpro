@@ -2550,6 +2550,40 @@ async function genImage() {
     }
 
     dbg('REQUEST', 'genImage: ' + m + ' | ' + JSON.stringify(body).substring(0, 100));
+    
+    // GPT Image 2 — uses OpenAI API directly (not Magnific)
+    if (m === 'gpt-image-2') {
+      var openaiKey = document.getElementById('openaiKeyInp') ? document.getElementById('openaiKeyInp').value.trim() : '';
+      if (!openaiKey) { toast('Enter OpenAI API key for GPT Image 2', 'err'); resetImageBtn(); return; }
+      document.getElementById('iProg').style.display = 'block';
+      document.getElementById('iPT').textContent = 'Generating with GPT Image 2...';
+      document.getElementById('iPB').style.width = '30%';
+      try {
+        var gptResp = await fetch(PROXY + '/proxy/openai/images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-openai-api-key': openaiKey },
+          body: JSON.stringify({ model: 'gpt-image-alpha', prompt: prompt, n: 1, size: '1024x1024', quality: 'high', output_format: 'url' })
+        });
+        var gptData = await gptResp.json();
+        document.getElementById('iProg').style.display = 'none';
+        if (gptData.data && gptData.data[0]) {
+          var gptUrl = gptData.data[0].url || ('data:image/png;base64,' + gptData.data[0].b64_json);
+          S.results.i = gptUrl;
+          document.getElementById('iRes2').innerHTML = '<img src="' + gptUrl + '" style="width:100%;max-height:360px;object-fit:contain">';
+          document.getElementById('iRA').style.display = 'flex';
+          addHistory({ type: 'image', model: 'gpt-image-2', prompt: prompt, url: gptUrl, thumb: gptUrl });
+          toast('GPT Image 2 generated!', 'ok');
+        } else {
+          throw new Error(gptData.error ? gptData.error.message : JSON.stringify(gptData).substring(0, 200));
+        }
+      } catch(ge) {
+        document.getElementById('iProg').style.display = 'none';
+        document.getElementById('iRes2').innerHTML = '<div class="res-ph"><i class="fas fa-circle-xmark" style="color:var(--r)"></i><p>' + escHtml(ge.message) + '</p></div>';
+        toast('GPT Error: ' + ge.message, 'err');
+      }
+      resetImageBtn(); return;
+    }
+
     var resp = await mFetchWithRotation('POST', ep.post, body);
     var taskId = (resp && resp.data && resp.data.task_id) ? resp.data.task_id : (resp && resp.task_id ? resp.task_id : null);
     if (!taskId) throw new Error('No task_id: ' + JSON.stringify(resp).substring(0, 200));
