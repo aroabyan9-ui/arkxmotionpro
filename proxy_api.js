@@ -40,9 +40,14 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
   const { base, header } = getKeyConfig(apiKey);
   const fullUrl = base + path_;
 
-  // Get proxy from proxyManager
+  // Get proxy from proxyManager — REQUIRED to avoid IP block
   const proxyInfo = proxyManager.getAgent();
-  console.log(`[Proxy] ${method} → ${fullUrl} | proxy: ${proxyInfo ? 'yes' : 'none'}`);
+  
+  if (!proxyInfo) {
+    console.warn(`[Proxy] WARNING: No proxy available for ${method} ${path_} — sending direct (may get IP blocked)`);
+  } else {
+    console.log(`[Proxy] ${method} → ${fullUrl} via proxy`);
+  }
 
   try {
     const config = {
@@ -68,7 +73,11 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
     console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
 
     if (proxyInfo) {
-      if (resp.status === 403 || resp.status === 429) {
+      if (resp.status === 403 && resp.data && resp.data.message && resp.data.message.includes('blocked')) {
+        // This proxy IP is blocked too — mark it dead and try next
+        proxyManager.markError(proxyInfo.proxyId);
+        console.warn(`[Proxy] Proxy blocked by Magnific, marking dead: ${proxyInfo.proxyId}`);
+      } else if (resp.status >= 500) {
         proxyManager.markError(proxyInfo.proxyId);
       } else {
         proxyManager.markSuccess(proxyInfo.proxyId);
