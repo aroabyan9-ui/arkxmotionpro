@@ -24,7 +24,10 @@ const upload = multer({
 
 const IMGBB_BASE = 'https://api.imgbb.com';
 
-// Use proxyManager for proxy rotation
+// Cloudflare Worker proxy URL — IP Cloudflare tidak di-block Magnific
+const CF_WORKER_URL = process.env.CF_WORKER_URL || 'https://arkx-proxy.jagoanoutfit515.workers.dev';
+
+// Use proxyManager for fallback proxy rotation
 const { proxyManager } = require('../services/proxyManager');
 
 // ── Helper: detect key type and get correct header + base URL ──
@@ -35,24 +38,19 @@ function getKeyConfig(apiKey) {
   return { base: 'https://api.magnific.com', header: 'x-magnific-api-key' };
 }
 
-// ── Helper: forward request ke Magnific/Freepik ──
+// ── Helper: forward request ke Magnific via Cloudflare Worker ──
 async function forwardToMagnific(method, path_, body, apiKey, res) {
   const { base, header } = getKeyConfig(apiKey);
-  const fullUrl = base + path_;
-
-  // Get proxy from proxyManager — REQUIRED to avoid IP block
-  const proxyInfo = proxyManager.getAgent();
+  const targetUrl = base + path_;
   
-  if (!proxyInfo) {
-    console.warn(`[Proxy] WARNING: No proxy available for ${method} ${path_} — sending direct (may get IP blocked)`);
-  } else {
-    console.log(`[Proxy] ${method} → ${fullUrl} via proxy`);
-  }
+  // Route via Cloudflare Worker: CF_WORKER_URL/https://api.freepik.com/v1/...
+  const cfUrl = `${CF_WORKER_URL}/${targetUrl}`;
+  console.log(`[CF] ${method} → ${cfUrl}`);
 
   try {
     const config = {
       method,
-      url: fullUrl,
+      url: cfUrl,
       headers: {
         [header]: apiKey,
         'Content-Type': 'application/json',
@@ -62,34 +60,45 @@ async function forwardToMagnific(method, path_, body, apiKey, res) {
       validateStatus: () => true
     };
 
-    if (proxyInfo) {
-      config.httpsAgent = proxyInfo.agent;
-      config.proxy = false;
-    }
-
     if (body && method !== 'GET') config.data = body;
 
     const resp = await axios(config);
-    console.log(`[Proxy] ${method} ${path_} → HTTP ${resp.status}`);
+    console.log(`[CF] ${method} ${path_} → HTTP ${resp.status}`);
 
-    if (proxyInfo) {
-      if (resp.status === 403 && resp.data && resp.data.message && resp.data.message.includes('blocked')) {
-        // This proxy IP is blocked too — mark it dead and try next
-        proxyManager.markError(proxyInfo.proxyId);
-        console.warn(`[Proxy] Proxy blocked by Magnific, marking dead: ${proxyInfo.proxyId}`);
-      } else if (resp.status >= 500) {
-        proxyManager.markError(proxyInfo.proxyId);
-      } else {
-        proxyManager.markSuccess(proxyInfo.proxyId);
-      }
+    // If CF Worker fails, try direct with proxyManager as fallback
+    if (resp.status === 0 || resp.status >= 502) {
+      console.warn('[CF] Worker failed, trying proxyManager fallback...');
+      return forwardDirect(method, targetUrl, body, header, apiKey, res);
     }
 
     res.status(resp.status).json(resp.data);
   } catch (err) {
+    console.error('[CF] Error:', err.message, '— trying fallback...');
+    return forwardDirect(method, targetUrl, body, header, apiKey, res);
+  }
+}
+
+// ── Fallback: direct request with proxyManager ──
+async function forwardDirect(method, targetUrl, body, header, apiKey, res) {
+  const proxyInfo = proxyManager.getAgent();
+  console.log(`[Direct] ${method} → ${targetUrl} | proxy: ${proxyInfo ? 'yes' : 'none'}`);
+  try {
+    const config = {
+      method, url: targetUrl,
+      headers: { [header]: apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      timeout: 60000, validateStatus: () => true
+    };
+    if (proxyInfo) { config.httpsAgent = proxyInfo.agent; config.proxy = false; }
+    if (body && method !== 'GET') config.data = body;
+    const resp = await axios(config);
+    if (proxyInfo) {
+      if (resp.status === 403) proxyManager.markError(proxyInfo.proxyId);
+      else proxyManager.markSuccess(proxyInfo.proxyId);
+    }
+    res.status(resp.status).json(resp.data);
+  } catch(err) {
     if (proxyInfo) proxyManager.markError(proxyInfo.proxyId);
-    const msg = err.message || 'Proxy error';
-    console.error('[Proxy] Error:', method, path_, msg);
-    res.status(500).json({ error: msg, proxy: true });
+    res.status(500).json({ error: err.message, proxy: true });
   }
 }
 
